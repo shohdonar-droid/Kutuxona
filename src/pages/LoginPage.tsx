@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {auth} from '../firebase';
-import {signInWithEmailAndPassword, createUserWithEmailAndPassword} from 'firebase/auth';
-import {getUserProfile, createUserProfile} from '../services/userService';
+import {signInWithEmailAndPassword} from 'firebase/auth';
+import {getUserProfile} from '../services/userService';
 import {useNavigate} from 'react-router-dom';
 
 export default function LoginPage() {
@@ -16,41 +16,27 @@ export default function LoginPage() {
     try {
       const authEmail = email === 'admin' ? 'admin@tdtu.uz' : email;
       const {user} = await signInWithEmailAndPassword(auth, authEmail, password);
+      console.log("Logged in user:", user.uid);
       const profile = await getUserProfile(user.uid);
+      console.log("Fetched profile:", profile);
+      
+      if (!profile) {
+        setError('Profil topilmadi. Iltimos, admin bilan bog\'laning.');
+        return;
+      }
+
       if (profile?.role === 'student') navigate('/student');
       else if (profile?.role === 'librarian') navigate('/librarian');
       else if (profile?.role === 'tutor') navigate('/tutor');
       else if (profile?.role === 'admin') navigate('/admin');
+      else navigate('/'); // Fallback if role is undefined
     } catch (err: any) {
-      console.error(err);
+      console.error("Login error:", err);
       if (err.code === 'auth/invalid-email') setError('Yaroqsiz email manzili.');
       else if (err.code === 'auth/user-not-found') setError('Foydalanuvchi topilmadi.');
       else if (err.code === 'auth/wrong-password') setError('Parol noto\'g\'ri.');
       else if (err.code === 'auth/invalid-credential') setError('Email yoki parol noto\'g\'ri.');
       else setError('Login xatosi: ' + err.message);
-    }
-  };
-
-  const handleCreateAdmin = async () => {
-    try {
-      const {user} = await createUserWithEmailAndPassword(auth, 'admin@tdtu.uz', 'admin123');
-      await createUserProfile({
-        uid: user.uid,
-        email: 'admin@tdtu.uz',
-        role: 'admin',
-        fullName: 'Admin',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      alert('Admin yaratildi! Endi admin/admin123 bilan kiring.');
-    } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        alert('Admin allaqachon yaratilgan. Iltimos, admin/admin123 bilan kiring.');
-      } else {
-        console.error(err);
-        setError('Admin yaratish xatosi: ' + err.message);
-      }
     }
   };
 
@@ -92,12 +78,6 @@ export default function LoginPage() {
             Kirish
           </button>
         </form>
-        
-        <div className="mt-6 text-center">
-            <button onClick={handleCreateAdmin} className="text-sm text-blue-600 hover:underline">
-                Admin foydalanuvchisini yaratish (bir marta)
-            </button>
-        </div>
       </div>
     </div>
   );
