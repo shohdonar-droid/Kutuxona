@@ -13,7 +13,7 @@ async function startServer() {
     initializeApp({
         projectId: 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d'
     });
-    const db = getFirestore(undefined, 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d');
+    const db = getFirestore();
 
     // Schedule notification job every 15 minutes
     cron.schedule('*/15 * * * *', async () => {

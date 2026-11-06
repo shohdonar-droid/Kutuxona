@@ -1,6 +1,7 @@
-import {collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy, runTransaction, Transaction} from 'firebase/firestore';
+import {collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy, runTransaction, Transaction, getCountFromServer} from 'firebase/firestore';
 import {db} from '../firebase';
 import {updateBookCopyStatus} from './bookCopyService';
+import {getLibrarySettings} from './settingsService';
 
 export interface Loan {
   id: string;
@@ -14,18 +15,33 @@ export interface Loan {
   status: 'ACTIVE' | 'RETURNED' | 'OVERDUE' | 'LOST' | 'DAMAGED';
 }
 
-export const issueBook = async (loan: Omit<Loan, 'id' | 'issuedAt' | 'status'>) => {
+export const issueBook = async (loan: Omit<Loan, 'id' | 'issuedAt' | 'dueAt' | 'status'>) => {
+  const settings = await getLibrarySettings();
+  
   return await runTransaction(db, async (transaction: Transaction) => {
+    // 1. Limit check
+    const loansQuery = query(collection(db, 'loans'), where('studentId', '==', loan.studentId), where('status', '==', 'ACTIVE'));
+    const loansSnapshot = await getDocs(loansQuery);
+    if (loansSnapshot.size >= settings.maxActiveLoans) {
+        throw new Error('Talaba maksimal kitob olish limitiga yetgan.');
+    }
+
+    // 2. Copy availability check
     const copyRef = doc(db, 'bookCopies', loan.copyId);
     const copyDoc = await transaction.get(copyRef);
     if (!copyDoc.exists() || copyDoc.data().status !== 'AVAILABLE') {
       throw new Error('Kitob berish uchun mavjud emas.');
     }
 
+    // 3. Due date calculation
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + settings.defaultLoanDays);
+
     const loanRef = doc(collection(db, 'loans'));
     transaction.set(loanRef, {
       ...loan,
       issuedAt: serverTimestamp(),
+      dueAt: dueDate.toISOString(),
       status: 'ACTIVE'
     });
     transaction.update(copyRef, { status: 'BORROWED' });

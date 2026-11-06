@@ -26,6 +26,7 @@ import StudentStatisticsPage from './pages/student/StudentStatisticsPage';
 import LibrarianIssuePage from './pages/librarian/LibrarianIssuePage';
 import LibrarianReturnPage from './pages/librarian/LibrarianReturnPage';
 import LibrarianScannerPage from './pages/librarian/LibrarianScannerPage';
+import LibrarianBookFondPage from './pages/librarian/LibrarianBookFondPage';
 
 function ProtectedRoute({children, allowedRoles}: {children: React.ReactNode, allowedRoles: string[]}) {
   const {user, profile, loading} = useAuth();
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/librarian/loans/issue" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianIssuePage /></ProtectedRoute>} />
         <Route path="/librarian/loans/return" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianReturnPage /></ProtectedRoute>} />
         <Route path="/librarian/scanner" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianScannerPage /></ProtectedRoute>} />
+        <Route path="/librarian/books" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianBookFondPage /></ProtectedRoute>} />
         <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalyticsPage /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettingsPage /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
