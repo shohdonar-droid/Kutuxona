@@ -27,6 +27,7 @@ import LibrarianIssuePage from './pages/librarian/LibrarianIssuePage';
 import LibrarianReturnPage from './pages/librarian/LibrarianReturnPage';
 import LibrarianScannerPage from './pages/librarian/LibrarianScannerPage';
 import LibrarianBookFondPage from './pages/librarian/LibrarianBookFondPage';
+import SidebarLayout from './components/SidebarLayout';
 
 function ProtectedRoute({children, allowedRoles}: {children: React.ReactNode, allowedRoles: string[]}) {
   const {user, profile, loading} = useAuth();
