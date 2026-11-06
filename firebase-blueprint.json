@@ -1,0 +1,227 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["student", "librarian", "tutor", "admin"] },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "groupIds": { "type": "array", "items": { "type": "string" } },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "groupId": { "type": "string" },
+        "groupName": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "facultyName": { "type": "string" },
+        "directionId": { "type": "string" },
+        "directionName": { "type": "string" },
+        "course": { "type": "number" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "studentId", "fullName", "status"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "Student group",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "facultyId": { "type": "string" },
+        "directionId": { "type": "string" },
+        "course": { "type": "number" },
+        "tutorIds": { "type": "array", "items": { "type": "string" } },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "isActive"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "Library book",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "authorIds": { "type": "array", "items": { "type": "string" } },
+        "isbn": { "type": "string" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "authorIds"]
+    },
+    "BookCopy": {
+      "title": "BookCopy",
+      "description": "Physical book copy",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bookId": { "type": "string" },
+        "inventoryId": { "type": "string" },
+        "barcode": { "type": "string" },
+        "qrCode": { "type": "string" },
+        "status": { "type": "string", "enum": ["AVAILABLE", "BORROWED", "RESERVED", "OVERDUE", "LOST", "DAMAGED", "REPAIR", "WRITTEN_OFF"] },
+        "location": { "type": "string" },
+        "condition": { "type": "string" }
+      },
+      "required": ["id", "bookId", "inventoryId", "status"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Book loan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentGroupId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "copyId": { "type": "string" },
+        "inventoryId": { "type": "string" },
+        "issuedAt": { "type": "string", "format": "date-time" },
+        "dueAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["ACTIVE", "RETURNED", "OVERDUE", "LOST", "DAMAGED"] }
+      },
+      "required": ["id", "studentId", "studentGroupId", "bookId", "copyId", "status"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "User bookmark",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "page": { "type": "number" },
+        "title": { "type": "string" }
+      },
+      "required": ["id", "userId", "bookId", "page"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "User favorite book",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "bookId"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "loanId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["LOAN_ISSUED", "DUE_5_DAYS", "DUE_1_DAY", "OVERDUE", "LOAN_RETURNED", "RESERVATION_READY", "GENERAL"] },
+        "isRead": { "type": "boolean" },
+        "dedupeKey": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "dedupeKey"]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "Book reservation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "bookId": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "READY", "FULFILLED", "CANCELLED", "EXPIRED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "bookId", "status", "createdAt"]
+    },
+    "LibrarySettings": {
+      "title": "LibrarySettings",
+      "description": "Library configuration settings",
+      "type": "object",
+      "properties": {
+        "maxActiveLoans": { "type": "number" },
+        "defaultLoanDays": { "type": "number" },
+        "dueSoonReminderDays": { "type": "number" },
+        "reservationEnabled": { "type": "boolean" },
+        "electronicReadingEnabled": { "type": "boolean" },
+        "libraryOpenTime": { "type": "string" },
+        "libraryCloseTime": { "type": "string" }
+      },
+      "required": ["maxActiveLoans", "defaultLoanDays"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Student profiles"
+    },
+    "/groups/{groupId}": {
+      "schema": "Group",
+      "description": "Student groups"
+    },
+    "/books/{bookId}": {
+      "schema": "Book",
+      "description": "Library books"
+    },
+    "/bookCopies/{copyId}": {
+      "schema": "BookCopy",
+      "description": "Physical book copies"
+    },
+    "/loans/{loanId}": {
+      "schema": "Loan",
+      "description": "Book loans"
+    },
+    "/bookmarks/{bookmarkId}": {
+      "schema": "Bookmark",
+      "description": "Bookmarks"
+    },
+    "/favorites/{favoriteId}": {
+      "schema": "Favorite",
+      "description": "User favorites"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/reservations/{reservationId}": {
+      "schema": "Reservation",
+      "description": "Book reservations"
+    },
+    "/settings/library": {
+      "schema": "LibrarySettings",
+      "description": "Library settings"
+    }
+  }
+}

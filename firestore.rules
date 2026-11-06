@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function getUserData() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isAdmin() { return isSignedIn() && getUserData().role == 'admin'; }
+    function isLibrarian() { return isSignedIn() && getUserData().role == 'librarian'; }
+    function isTutor() { return isSignedIn() && getUserData().role == 'tutor'; }
+    function isStudent() { return isSignedIn() && getUserData().role == 'student'; }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isLibrarian() || isTutor());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /students/{studentId} {
+      allow read: if isSignedIn() && (
+        (isStudent() && request.auth.uid == resource.data.userId) || 
+        isAdmin() || 
+        isLibrarian() || 
+        (isTutor() && getUserData().role == 'tutor' && resource.data.groupId in getUserData().groupIds)
+      );
+      allow write: if isAdmin();
+    }
+    
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /books/{bookId} {
+      allow read: if resource.data.isPublished == true || isAdmin() || isLibrarian();
+      allow write: if isAdmin() || isLibrarian();
+    }
+    
+    match /bookCopies/{copyId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isLibrarian();
+    }
+
+    match /loans/{loanId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.studentId || isAdmin() || isLibrarian() || (isTutor() && getUserData().groupIds != null && resource.data.studentGroupId in getUserData().groupIds));
+      allow write: if isAdmin() || isLibrarian();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin());
+      allow write: if isAdmin();
+      allow create: if isSignedIn();
+    }
+
+    match /reservations/{reservationId} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin() || isLibrarian());
+      allow write: if isAdmin() || isLibrarian();
+      allow create: if isSignedIn();
+    }
+    
+    match /settings/library {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

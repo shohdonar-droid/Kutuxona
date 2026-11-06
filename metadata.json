@@ -1,0 +1,6 @@
+{
+  "name": "TDTU Chirchiq filiali — Elektron kutubxonasi",
+  "description": "Toshkent davlat tibbiyot universiteti Chirchiq filiali uchun professional elektron kutubxona tizimi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
