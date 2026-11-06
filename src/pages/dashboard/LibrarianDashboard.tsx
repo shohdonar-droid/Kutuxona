@@ -21,33 +21,33 @@ export default function LibrarianDashboard() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Kutubxonachi Ishchi Paneli</h1>
+    <div className="p-8 max-w-7xl mx-auto bg-gray-50 min-h-screen">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Kutubxonachi Ishchi Paneli</h1>
+        <p className="text-gray-500">Kutubxona faoliyatini boshqarish va monitoring</p>
+      </header>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="border p-4 rounded shadow bg-white border-l-4 border-blue-500">
-            <h3 className="text-gray-500">Jami nusxa</h3>
-            <p className="text-2xl font-bold">{stats.total}</p>
-        </div>
-        <div className="border p-4 rounded shadow bg-white border-l-4 border-green-500">
-            <h3 className="text-gray-500">Mavjud</h3>
-            <p className="text-2xl font-bold">{stats.available}</p>
-        </div>
-        <div className="border p-4 rounded shadow bg-white border-l-4 border-yellow-500">
-            <h3 className="text-gray-500">Talabalarda</h3>
-            <p className="text-2xl font-bold">{stats.borrowed}</p>
-        </div>
-        <div className="border p-4 rounded shadow bg-white border-l-4 border-red-500">
-            <h3 className="text-gray-500">Muddati o‘tgan</h3>
-            <p className="text-2xl font-bold">{stats.overdue}</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        {[
+          {title: 'Jami nusxa', value: stats.total, color: 'border-blue-500'},
+          {title: 'Mavjud', value: stats.available, color: 'border-green-500'},
+          {title: 'Talabalarda', value: stats.borrowed, color: 'border-yellow-500'},
+          {title: 'Muddati o‘tgan', value: stats.overdue, color: 'border-red-500'}
+        ].map(stat => (
+          <div key={stat.title} className={`bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 ${stat.color}`}>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">{stat.title}</h3>
+            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {menuItems.map((item) => (
-          <Link key={item.name} to={item.path} className={`${item.color} text-white p-6 rounded-lg shadow-lg flex items-center space-x-4 hover:opacity-90 transition`}>
-            <item.icon size={32} />
-            <span className="text-lg font-semibold">{item.name}</span>
+          <Link key={item.name} to={item.path} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4 hover:border-blue-200 hover:shadow-md transition group">
+            <div className={`${item.color} p-3 rounded-lg text-white`}>
+              <item.icon size={24} />
+            </div>
+            <span className="text-lg font-medium text-gray-700 group-hover:text-blue-900">{item.name}</span>
           </Link>
         ))}
       </div>
