@@ -1,4 +1,4 @@
-import {collection, addDoc, query, where, getDocs, updateDoc, doc} from 'firebase/firestore';
+import {collection, addDoc, query, where, getDocs, updateDoc, doc, getCountFromServer} from 'firebase/firestore';
 import {db} from '../firebase';
 
 export interface BookCopy {
@@ -40,4 +40,9 @@ export const getBookCopyStats = async () => {
     else if (copy.status === 'REPAIR') stats.repair++;
   });
   return stats;
+};
+export const getBookCopiesCount = async (bookId: string) => {
+    const q = query(collection(db, 'bookCopies'), where('bookId', '==', bookId));
+    const snapshot = await getCountFromServer(q);
+    return snapshot.data().count;
 };

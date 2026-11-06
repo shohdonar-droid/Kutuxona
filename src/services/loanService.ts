@@ -81,3 +81,17 @@ export const getStudentLoans = async (studentId: string) => {
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Loan));
 };
+export const getLoansWithDateFilter = async (startDate: Date, endDate: Date) => {
+  const q = query(collection(db, 'loans'), 
+    where('issuedAt', '>=', startDate.toISOString()),
+    where('issuedAt', '<=', endDate.toISOString())
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Loan));
+};
+
+export const getActiveLoansCount = async () => {
+    const q = query(collection(db, 'loans'), where('status', '==', 'ACTIVE'));
+    const snapshot = await getCountFromServer(q);
+    return snapshot.data().count;
+};

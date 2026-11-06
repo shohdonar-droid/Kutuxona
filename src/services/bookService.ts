@@ -1,4 +1,4 @@
-import {collection, getDocs, getDoc, doc, addDoc, updateDoc, query, where} from 'firebase/firestore';
+import {collection, getDocs, getDoc, doc, addDoc, updateDoc, query, where, getCountFromServer} from 'firebase/firestore';
 import {db} from '../firebase';
 
 export interface Book {
@@ -20,6 +20,11 @@ export const getBooks = async (publishedOnly: boolean = true) => {
   }
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Book));
+};
+
+export const getBooksCount = async () => {
+    const snapshot = await getCountFromServer(collection(db, 'books'));
+    return snapshot.data().count;
 };
 
 export const getBook = async (id: string) => {

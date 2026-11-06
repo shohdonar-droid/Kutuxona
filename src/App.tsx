@@ -63,9 +63,15 @@ export default function App() {
         <Route path="/tutor/students/:studentId" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><StudentDetailPage /></ProtectedRoute>} />
         <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
         <Route path="/librarian/books" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><BookManagementPage /></ProtectedRoute>} />
-        <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student', 'admin']}><StudentDashboard /></ProtectedRoute>} />        <Route path="/librarian/*" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianDashboard /></ProtectedRoute>} />
-        <Route path="/tutor/*" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><TutorDashboard /></ProtectedRoute>} />
-        <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route element={<SidebarLayout />}>
+            <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/analitika" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalyticsPage /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
+            <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student', 'admin']}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/librarian/*" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianDashboard /></ProtectedRoute>} />
+            <Route path="/tutor/*" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><TutorDashboard /></ProtectedRoute>} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

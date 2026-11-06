@@ -21,6 +21,9 @@ export default function LoginPage() {
       if (email === 'admin1' && password === '12345a') {
         authEmail = 'admin@tdtu.uz';
         authPassword = 'admin123'; // The actual firebase password
+      } else if (!authEmail.includes('@')) {
+        setError('Yaroqsiz email manzili.');
+        return;
       }
 
       const {user} = await signInWithEmailAndPassword(auth, authEmail, authPassword);

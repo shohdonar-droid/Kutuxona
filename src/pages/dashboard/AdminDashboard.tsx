@@ -1,17 +1,23 @@
 import {useEffect, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {LayoutDashboard, Users, BookOpen, BarChart3, Settings, ShieldAlert, FileText} from 'lucide-react';
-// Import services if needed for stats.
-// Assuming services exist or creating minimal placeholders.
+import {getUsersCount, getStudentsCount} from '../../services/userService';
+import {getBooksCount} from '../../services/bookService';
+import {getActiveLoansCount} from '../../services/loanService';
 
 export default function AdminDashboard() {
-  // Replace with real data fetching hooks
-  const stats = {
-    users: 150,
-    students: 120,
-    books: 300,
-    activeLoans: 45
-  };
+  const [stats, setStats] = useState({users: 0, students: 0, books: 0, activeLoans: 0});
+
+  useEffect(() => {
+    Promise.all([
+        getUsersCount(),
+        getBooksCount(),
+        getStudentsCount(),
+        getActiveLoansCount()
+    ]).then(([users, books, students, activeLoans]) => {
+        setStats({users, students, books, activeLoans});
+    });
+  }, []);
 
   return (
     <div className="p-8 max-w-7xl mx-auto bg-gray-50 min-h-screen">

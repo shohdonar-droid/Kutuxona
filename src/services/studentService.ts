@@ -1,4 +1,4 @@
-import {collection, getDocs, query, where, addDoc, updateDoc, doc} from 'firebase/firestore';
+import {collection, getDocs, query, where, addDoc, updateDoc, doc, getCountFromServer} from 'firebase/firestore';
 import {db} from '../firebase';
 
 export interface Student {
@@ -32,4 +32,9 @@ export const getStudentsByGroup = async (groupId: string) => {
 
 export const createStudent = async (student: Omit<Student, 'id'>) => {
   return await addDoc(collection(db, 'students'), student);
+};
+
+export const getStudentsCount = async () => {
+  const snapshot = await getCountFromServer(collection(db, 'students'));
+  return snapshot.data().count;
 };
