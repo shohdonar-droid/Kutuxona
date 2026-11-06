@@ -14,7 +14,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      const {user} = await signInWithEmailAndPassword(auth, email, password);
+      const authEmail = email === 'admin' ? 'admin@tdtu.uz' : email;
+      const {user} = await signInWithEmailAndPassword(auth, authEmail, password);
       const profile = await getUserProfile(user.uid);
       if (profile?.role === 'student') navigate('/student');
       else if (profile?.role === 'librarian') navigate('/librarian');
@@ -32,7 +33,7 @@ export default function LoginPage() {
   return (
     <form onSubmit={handleLogin}>
       {error && <p className="text-red-500 mb-4">{error}</p>}
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required />
+      <input type="text" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email yoki admin" required />
       <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required />
       <button type="submit">Login</button>
     </form>
