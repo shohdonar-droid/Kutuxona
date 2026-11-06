@@ -13,12 +13,13 @@ async function startServer() {
     initializeApp({
         projectId: 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d'
     });
+    const db = getFirestore(undefined, 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d');
 
     // Schedule notification job every 15 minutes
     cron.schedule('*/15 * * * *', async () => {
         console.log('Running loan notification job...');
         try {
-            await processLoanNotifications();
+            await processLoanNotifications(db);
             console.log('Notification job completed');
         } catch (e) {
             console.error('Notification job error:', e);
@@ -30,7 +31,7 @@ async function startServer() {
             return res.status(401).send('Unauthorized');
         }
         try {
-            await processLoanNotifications();
+            await processLoanNotifications(db);
             res.status(200).send('Notifications processed');
         } catch (e) {
             res.status(500).send(e);

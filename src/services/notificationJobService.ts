@@ -1,7 +1,6 @@
-import { getFirestore } from 'firebase-admin/firestore';
+import { Firestore } from 'firebase-admin/firestore';
 
-export const processLoanNotifications = async () => {
-  const db = getFirestore();
+export const processLoanNotifications = async (db: Firestore) => {
   const now = new Date();
   
   // Use Tashkent time (UTC+5)
@@ -14,6 +13,7 @@ export const processLoanNotifications = async () => {
 
   for (const doc of activeLoans.docs) {
     const loan = doc.data();
+    // Assuming dueAt is a Timestamp in Firestore
     const dueAt = new Date(loan.dueAt.toDate());
     const diffTime = dueAt.getTime() - nowTashkent.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

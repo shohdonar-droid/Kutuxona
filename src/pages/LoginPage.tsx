@@ -14,8 +14,16 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      const authEmail = email === 'admin' ? 'admin@tdtu.uz' : email;
-      const {user} = await signInWithEmailAndPassword(auth, authEmail, password);
+      let authEmail = email;
+      let authPassword = password;
+
+      // Hardcoded admin check
+      if (email === 'admin1' && password === '12345a') {
+        authEmail = 'admin@tdtu.uz';
+        authPassword = 'admin123'; // The actual firebase password
+      }
+
+      const {user} = await signInWithEmailAndPassword(auth, authEmail, authPassword);
       console.log("Logged in user:", user.uid);
       const profile = await getUserProfile(user.uid);
       console.log("Fetched profile:", profile);
