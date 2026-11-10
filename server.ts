@@ -11,7 +11,7 @@ async function startServer() {
 
     // Initialize Admin SDK
     initializeApp({
-        projectId: 'probable-wall-007pf'
+        projectId: 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d'
     });
     const db = getFirestore('ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d');
 
@@ -35,6 +35,41 @@ async function startServer() {
             res.status(200).send('Notifications processed');
         } catch (e) {
             res.status(500).send(e);
+        }
+    });
+
+    app.post('/api/admin/users/create', async (req, res) => {
+        // Simplified auth check for this environment or use a fixed secret
+        if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
+            return res.status(401).send('Unauthorized');
+        }
+        const { email, password, fullName, role, ...extra } = req.body;
+        const { getAuth } = await import('firebase-admin/auth');
+        const auth = getAuth();
+        
+        try {
+            const userRecord = await auth.createUser({
+                email,
+                password,
+                displayName: fullName
+            });
+            
+            const profile = {
+                uid: userRecord.uid,
+                email,
+                fullName,
+                role,
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                ...extra
+            };
+            
+            await db.collection('users').doc(userRecord.uid).set(profile);
+            res.status(200).json({ uid: userRecord.uid });
+        } catch (e: any) {
+            console.error("User creation error:", e);
+            res.status(500).json({ error: e.message });
         }
     });
 

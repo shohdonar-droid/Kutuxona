@@ -1,17 +1,17 @@
 import {useEffect, useState} from 'react';
 import {useParams, Link} from 'react-router-dom';
 import {getBook, Book} from '../services/bookService';
-import {getBookCopiesCount} from '../services/bookCopyService';
+import {getBookAvailability} from '../services/bookCopyService';
 import {useAuth} from '../context/AuthContext';
 import {Card, Badge, Button} from '../components/UIComponents';
-import {BookOpen, Heart, Bookmark, Share2, Info, CheckCircle2, AlertCircle, ChevronLeft} from 'lucide-react';
+import {BookOpen, Heart, Bookmark, Info, AlertCircle, ChevronLeft} from 'lucide-react';
 
 export default function BookDetailPage() {
   const {id} = useParams<{id: string}>();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const {user, profile} = useAuth();
-  const [copiesCount, setCopiesCount] = useState(0);
+  const [availability, setAvailability] = useState<{available: number, total: number} | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -19,7 +19,7 @@ export default function BookDetailPage() {
         setBook(data);
         setLoading(false);
       });
-      getBookCopiesCount(id).then(setCopiesCount);
+      getBookAvailability(id).then(setAvailability);
     }
   }, [id]);
 
@@ -63,14 +63,12 @@ export default function BookDetailPage() {
                     <Info size={14} /> Jismoniy fond
                 </h4>
                 <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-gray-600">Jami nusxalar:</span>
-                    <span className="text-lg font-black text-gray-900">{copiesCount} ta</span>
+                    <span className="text-sm font-bold text-gray-600">Fond holati:</span>
+                    <Badge variant={(availability?.available || 0) > 0 ? 'green' : 'red'}>
+                        {availability?.available || 0} / {availability?.total || 0} ta
+                    </Badge>
                 </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-gray-600">Mavjud:</span>
-                    <Badge variant="green">7 ta</Badge>
-                </div>
-                {copiesCount > 0 && (
+                {(availability?.total || 0) > 0 && (
                     <Button className="w-full justify-center bg-blue-600 hover:bg-blue-700 py-3 mt-2 shadow-lg shadow-blue-600/20">
                         📌 Bron qilish
                     </Button>

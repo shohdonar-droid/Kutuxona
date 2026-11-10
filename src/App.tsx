@@ -15,6 +15,8 @@ import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminStudentsPage from './pages/admin/AdminStudentsPage';
+import AdminLibrariansPage from './pages/admin/AdminLibrariansPage';
+import AdminTutorsPage from './pages/admin/AdminTutorsPage';
 import AdminGroupsPage from './pages/admin/AdminGroupsPage';
 import StudentDetailPage from './pages/tutor/StudentDetailPage';
 import PDFReader from './pages/student/PDFReader';
@@ -31,9 +33,15 @@ import SidebarLayout from './components/SidebarLayout';
 
 function ProtectedRoute({children, allowedRoles}: {children: React.ReactNode, allowedRoles: string[]}) {
   const {user, profile, loading} = useAuth();
+  
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-blue-900 font-bold">Yuklanmoqda...</div>;
   if (!user) return <Navigate to="/login" />;
-  if (!profile || !allowedRoles.includes(profile.role)) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-red-600 font-bold">Ruxsat etilmadi</div>;
+  
+  if (!profile || !allowedRoles.includes(profile.role)) {
+    const dashboardPath = profile ? `/${profile.role}` : '/';
+    return <Navigate to={dashboardPath} replace />;
+  }
+  
   return <>{children}</>;
 }
 
@@ -91,8 +99,8 @@ export default function App() {
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudentsPage /></ProtectedRoute>} />
-            <Route path="/admin/tutors" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Tyutorlar boshqaruvi</div></ProtectedRoute>} />
-            <Route path="/admin/librarians" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Kutubxonachilar boshqaruvi</div></ProtectedRoute>} />
+            <Route path="/admin/tutors" element={<ProtectedRoute allowedRoles={['admin']}><AdminTutorsPage /></ProtectedRoute>} />
+            <Route path="/admin/librarians" element={<ProtectedRoute allowedRoles={['admin']}><AdminLibrariansPage /></ProtectedRoute>} />
             <Route path="/admin/groups" element={<ProtectedRoute allowedRoles={['admin']}><AdminGroupsPage /></ProtectedRoute>} />
             <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
             <Route path="/admin/copies" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Admin Nusxalar boshqaruvi</div></ProtectedRoute>} />

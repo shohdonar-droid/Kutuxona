@@ -46,3 +46,33 @@ export const getBookCopiesCount = async (bookId: string) => {
     const snapshot = await getCountFromServer(q);
     return snapshot.data().count;
 };
+
+export const createBookCopies = async (bookId: string, count: number, prefix: string) => {
+    const promises = [];
+    for (let i = 1; i <= count; i++) {
+        const inventoryId = `${prefix}-${String(i).padStart(3, '0')}`;
+        promises.push(addDoc(collection(db, 'bookCopies'), {
+            bookId,
+            inventoryId,
+            barcode: inventoryId,
+            qrCode: inventoryId,
+            status: 'AVAILABLE'
+        }));
+    }
+    return await Promise.all(promises);
+};
+
+export const getBookAvailability = async (bookId: string) => {
+    const allQ = query(collection(db, 'bookCopies'), where('bookId', '==', bookId));
+    const availableQ = query(collection(db, 'bookCopies'), where('bookId', '==', bookId), where('status', '==', 'AVAILABLE'));
+    
+    const [allSnapshot, availableSnapshot] = await Promise.all([
+        getCountFromServer(allQ),
+        getCountFromServer(availableQ)
+    ]);
+    
+    return {
+        total: allSnapshot.data().count,
+        available: availableSnapshot.data().count
+    };
+};

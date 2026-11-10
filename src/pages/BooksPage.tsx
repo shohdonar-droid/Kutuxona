@@ -1,9 +1,78 @@
 import {useEffect, useState, useMemo} from 'react';
 import {getBooks, Book} from '../services/bookService';
+import {getBookAvailability} from '../services/bookCopyService';
 import {Link, useSearchParams} from 'react-router-dom';
-import {Search, Filter, BookOpen, ChevronRight, LayoutGrid, List, SlidersHorizontal} from 'lucide-react';
+import {Search, Filter, BookOpen, ChevronRight, LayoutGrid, List, SlidersHorizontal, Package} from 'lucide-react';
 import {Card, Badge, Button} from '../components/UIComponents';
 import PageHeader from '../components/PageHeader';
+
+function BookCard({book, viewMode}: {book: Book, viewMode: 'grid' | 'list'}) {
+    const [availability, setAvailability] = useState<{available: number, total: number} | null>(null);
+
+    useEffect(() => {
+        getBookAvailability(book.id).then(setAvailability);
+    }, [book.id]);
+
+    const availabilityText = availability ? `${availability.available} / ${availability.total}` : '...';
+    const isOutOfStock = availability && availability.available === 0;
+
+    if (viewMode === 'grid') {
+        return (
+            <Link to={`/books/${book.id}`} className="group">
+                <Card className="p-0 overflow-hidden border-0 bg-transparent shadow-none hover:-translate-y-2 transition-transform duration-500">
+                    <div className="aspect-[3/4] rounded-2xl overflow-hidden mb-4 shadow-lg group-hover:shadow-2xl transition-shadow relative">
+                        {book.coverUrl ? (
+                            <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                            <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300 italic text-xs">No cover</div>
+                        )}
+                        <div className="absolute top-3 left-3 flex flex-col gap-2">
+                            <Badge variant="blue" className="bg-blue-600/90 text-white border-0 backdrop-blur-md shadow-lg">New</Badge>
+                            <div className={`px-2 py-1 rounded-lg text-[10px] font-black backdrop-blur-md shadow-lg flex items-center gap-1 ${isOutOfStock ? 'bg-red-500/90 text-white' : 'bg-green-500/90 text-white'}`}>
+                                <Package size={10} /> {availabilityText}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="px-1">
+                        <h3 className="text-sm font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">{book.title}</h3>
+                        <p className="text-xs text-gray-500 mt-1 font-bold">{book.author || "Muallif noma'lum"}</p>
+                    </div>
+                </Card>
+            </Link>
+        );
+    }
+
+    return (
+        <Link to={`/books/${book.id}`} className="group block">
+            <Card className="p-4 hover:border-blue-200 transition-all">
+                <div className="flex gap-6 items-center">
+                    <div className="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-100">
+                        {book.coverUrl ? (
+                            <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">No cover</div>
+                        )}
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-700 transition-colors">{book.title}</h3>
+                        <p className="text-sm text-gray-500 font-bold">{book.author}</p>
+                    </div>
+                    <div className="hidden md:flex items-center gap-8 px-6">
+                        <div className="text-center">
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Mavjudlik</p>
+                            <Badge variant={isOutOfStock ? 'red' : 'green'}>{availabilityText}</Badge>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">ISBN</p>
+                            <p className="text-sm text-gray-700 font-mono">{book.isbn}</p>
+                        </div>
+                    </div>
+                    <ChevronRight className="text-gray-300 group-hover:text-blue-500 transition-colors" />
+                </div>
+            </Card>
+        </Link>
+    );
+}
 
 export default function BooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -79,49 +148,7 @@ export default function BooksPage() {
             : "space-y-4"
         }>
             {filteredBooks.map(book => (
-                viewMode === 'grid' ? (
-                    <Link key={book.id} to={`/books/${book.id}`} className="group">
-                        <Card className="p-0 overflow-hidden border-0 bg-transparent shadow-none hover:-translate-y-2 transition-transform duration-500">
-                            <div className="aspect-[3/4] rounded-2xl overflow-hidden mb-4 shadow-lg group-hover:shadow-2xl transition-shadow relative">
-                                {book.coverUrl ? (
-                                    <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                                ) : (
-                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-300 italic text-xs">No cover</div>
-                                )}
-                                <div className="absolute top-3 left-3">
-                                    <Badge variant="blue" className="bg-blue-600/90 text-white border-0 backdrop-blur-md shadow-lg">New</Badge>
-                                </div>
-                            </div>
-                            <div className="px-1">
-                                <h3 className="text-sm font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">{book.title}</h3>
-                                <p className="text-xs text-gray-500 mt-1 font-bold">{book.author || "Muallif noma'lum"}</p>
-                            </div>
-                        </Card>
-                    </Link>
-                ) : (
-                    <Link key={book.id} to={`/books/${book.id}`} className="group block">
-                        <Card className="p-4 hover:border-blue-200 transition-all">
-                            <div className="flex gap-6 items-center">
-                                <div className="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden shrink-0 shadow-sm border border-gray-100">
-                                    {book.coverUrl ? (
-                                        <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">No cover</div>
-                                    )}
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-black text-gray-900 group-hover:text-blue-700 transition-colors">{book.title}</h3>
-                                    <p className="text-sm text-gray-500 font-bold">{book.author}</p>
-                                </div>
-                                <div className="hidden md:block text-right">
-                                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">ISBN</p>
-                                    <p className="text-sm text-gray-700 font-mono">{book.isbn}</p>
-                                </div>
-                                <ChevronRight className="text-gray-300 group-hover:text-blue-500 transition-colors" />
-                            </div>
-                        </Card>
-                    </Link>
-                )
+                <BookCard key={book.id} book={book} viewMode={viewMode} />
             ))}
         </div>
       ) : (

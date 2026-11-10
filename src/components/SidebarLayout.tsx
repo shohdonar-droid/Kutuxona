@@ -1,4 +1,5 @@
 import {Link, Outlet, useLocation} from 'react-router-dom';
+import {useState} from 'react';
 import {
   LayoutDashboard, Users, BookOpen, BookCheck, ShieldAlert, BarChart3, Settings, LogOut,
   Home, Book, Bookmark, History, Bell, User, BookOpenText, Package, QrCode, ArrowLeftRight,
@@ -11,6 +12,8 @@ export default function SidebarLayout() {
   const {profile} = useAuth();
   const location = useLocation();
 
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
   const getMenuItems = () => {
     if (!profile) return [];
     
@@ -18,10 +21,15 @@ export default function SidebarLayout() {
       return [
         { section: 'BOSHQRUV' },
         { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-        { name: 'Foydalanuvchilar', path: '/admin/users', icon: Users },
-        { name: 'Talabalar', path: '/admin/students', icon: GraduationCap },
-        { name: 'Tyutorlar', path: '/admin/tutors', icon: User },
-        { name: 'Kutubxonachilar', path: '/admin/librarians', icon: BookOpenText },
+        { 
+            name: 'Foydalanuvchilar', 
+            icon: Users,
+            submenu: [
+                { name: 'Kutubxonachilar', path: '/admin/librarians', icon: BookOpenText },
+                { name: 'Tyutorlar', path: '/admin/tutors', icon: User },
+                { name: 'Talabalar', path: '/admin/students', icon: GraduationCap },
+            ]
+        },
         { name: 'Guruhlar', path: '/admin/groups', icon: Building2 },
         
         { section: 'KUTUBXONA' },
@@ -47,7 +55,7 @@ export default function SidebarLayout() {
         { section: 'FOND' },
         { name: 'Kitoblar fondi', path: '/librarian/books', icon: BookOpen },
         { name: 'Kitob nusxalari', path: '/librarian/copies', icon: Package },
-        { name: 'Kitob qo‘shish', path: '/admin/books', icon: PlusCircle }, // Sharing Admin book management
+        { name: 'Kitob qo‘shish', path: '/admin/books', icon: PlusCircle },
         
         { section: 'OPERATSIYALAR' },
         { name: 'Kitob berish', path: '/librarian/loans/issue', icon: ArrowLeftRight },
@@ -117,6 +125,40 @@ export default function SidebarLayout() {
                 </div>
               );
             }
+            
+            if (item.submenu) {
+                return (
+                    <div key={idx} className="space-y-1">
+                        <button 
+                            onClick={() => setUserMenuOpen(!userMenuOpen)}
+                            className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-blue-800/50 text-blue-100`}
+                        >
+                            <div className="flex items-center space-x-3">
+                                <item.icon size={18} className="text-blue-300" />
+                                <span className="text-sm font-medium">{item.name}</span>
+                            </div>
+                            <PlusCircle size={14} className={`transition-transform ${userMenuOpen ? 'rotate-45 text-white' : 'text-blue-400'}`} />
+                        </button>
+                        {userMenuOpen && (
+                            <div className="pl-6 space-y-1">
+                                {item.submenu.map((sub: any) => (
+                                    <Link
+                                        key={sub.path}
+                                        to={sub.path}
+                                        className={`flex items-center space-x-3 p-2.5 rounded-lg transition-colors ${
+                                            location.pathname === sub.path ? 'bg-blue-800 text-white shadow-sm' : 'hover:bg-blue-800/40 text-blue-200'
+                                        }`}
+                                    >
+                                        <sub.icon size={14} className={location.pathname === sub.path ? 'text-white' : 'text-blue-400'} />
+                                        <span className="text-xs font-medium">{sub.name}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
             return (
               <Link
                 key={item.name}

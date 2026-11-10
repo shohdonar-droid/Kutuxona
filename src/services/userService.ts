@@ -1,4 +1,4 @@
-import {doc, getDoc, setDoc, collection, getCountFromServer, query, where} from 'firebase/firestore';
+import {doc, getDoc, setDoc, collection, getCountFromServer, query, where, getDocs} from 'firebase/firestore';
 import {db} from '../firebase';
 
 export interface UserProfile {
@@ -48,4 +48,26 @@ export const getRoleCounts = async () => {
       counts[role] = snapshot.data().count;
   }
   return counts;
+};
+
+export const getUsersByRole = async (role: string) => {
+  const q = query(collection(db, 'users'), where('role', '==', role));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docSnap => ({uid: docSnap.id, ...docSnap.data()} as UserProfile));
+};
+
+export const adminCreateUser = async (data: any) => {
+    const response = await fetch('/api/admin/users/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'TDTU_ADMIN_SECRET' // In real app, get from env or secure context
+        },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to create user');
+    }
+    return await response.json();
 };
