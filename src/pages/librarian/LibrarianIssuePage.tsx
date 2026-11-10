@@ -14,7 +14,15 @@ export default function LibrarianIssuePage() {
         alert('Talaba topilmadi yoki guruhga biriktirilmagan');
         return;
     }
-    await issueBook({studentId, studentGroupId: student.groupId, bookId, copyId, inventoryId});
+    await issueBook({
+      studentId, 
+      studentGroupId: student.groupId, 
+      studentName: student.fullName,
+      bookId, 
+      copyId, 
+      inventoryId,
+      createdAt: new Date().toISOString()
+    });
     alert('Kitob berildi!');
   };
 

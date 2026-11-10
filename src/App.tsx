@@ -31,9 +31,9 @@ import SidebarLayout from './components/SidebarLayout';
 
 function ProtectedRoute({children, allowedRoles}: {children: React.ReactNode, allowedRoles: string[]}) {
   const {user, profile, loading} = useAuth();
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-blue-900 font-bold">Yuklanmoqda...</div>;
   if (!user) return <Navigate to="/login" />;
-  if (!profile || !allowedRoles.includes(profile.role)) return <div>Access Denied</div>;
+  if (!profile || !allowedRoles.includes(profile.role)) return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-red-600 font-bold">Ruxsat etilmadi</div>;
   return <>{children}</>;
 }
 
@@ -41,38 +41,72 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/books" element={<BooksPage />} />
         <Route path="/books/:id" element={<BookDetailPage />} />
-        <Route path="/student/read/:bookId" element={<ProtectedRoute allowedRoles={['student', 'admin', 'librarian', 'tutor']}><PDFReader /></ProtectedRoute>} />
-        <Route path="/student/favorites" element={<ProtectedRoute allowedRoles={['student']}><FavoritesPage /></ProtectedRoute>} />
-        <Route path="/student/reading-history" element={<ProtectedRoute allowedRoles={['student']}><ReadingHistoryPage /></ProtectedRoute>} />
-        <Route path="/student/my-books" element={<ProtectedRoute allowedRoles={['student']}><MyBooksPage /></ProtectedRoute>} />
-        <Route path="/student/notifications" element={<ProtectedRoute allowedRoles={['student']}><NotificationsPage /></ProtectedRoute>} />
-        <Route path="/student/statistics" element={<ProtectedRoute allowedRoles={['student']}><StudentStatisticsPage /></ProtectedRoute>} />
-        <Route path="/librarian/loans/issue" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianIssuePage /></ProtectedRoute>} />
-        <Route path="/librarian/loans/return" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianReturnPage /></ProtectedRoute>} />
-        <Route path="/librarian/scanner" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianScannerPage /></ProtectedRoute>} />
-        <Route path="/librarian/books" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianBookFondPage /></ProtectedRoute>} />
-        <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalyticsPage /></ProtectedRoute>} />
-        <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettingsPage /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
-        <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudentsPage /></ProtectedRoute>} />
-        <Route path="/admin/groups" element={<ProtectedRoute allowedRoles={['admin']}><AdminGroupsPage /></ProtectedRoute>} />
-        <Route path="/tutor/students/:studentId" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><StudentDetailPage /></ProtectedRoute>} />
-        <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
-        <Route path="/librarian/books" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><BookManagementPage /></ProtectedRoute>} />
+        
+        {/* Authenticated Routes with Sidebar */}
         <Route element={<SidebarLayout />}>
-            <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/analitika" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalyticsPage /></ProtectedRoute>} />
+            {/* Student Routes */}
+            <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/student/favorites" element={<ProtectedRoute allowedRoles={['student']}><FavoritesPage /></ProtectedRoute>} />
+            <Route path="/student/reading-history" element={<ProtectedRoute allowedRoles={['student']}><ReadingHistoryPage /></ProtectedRoute>} />
+            <Route path="/student/my-books" element={<ProtectedRoute allowedRoles={['student']}><MyBooksPage /></ProtectedRoute>} />
+            <Route path="/student/notifications" element={<ProtectedRoute allowedRoles={['student', 'admin', 'librarian', 'tutor']}><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/student/statistics" element={<ProtectedRoute allowedRoles={['student']}><StudentStatisticsPage /></ProtectedRoute>} />
+            <Route path="/student/reservations" element={<ProtectedRoute allowedRoles={['student']}><div className="p-8">Bronlarim sahifasi (Tez orada...)</div></ProtectedRoute>} />
+            <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><div className="p-8">Talaba Profili</div></ProtectedRoute>} />
+            <Route path="/student/settings" element={<ProtectedRoute allowedRoles={['student']}><div className="p-8">Talaba Sozlamalari</div></ProtectedRoute>} />
+            <Route path="/student/read/:bookId" element={<ProtectedRoute allowedRoles={['student', 'admin', 'librarian', 'tutor']}><PDFReader /></ProtectedRoute>} />
+
+            {/* Librarian Routes */}
+            <Route path="/librarian" element={<ProtectedRoute allowedRoles={['librarian']}><LibrarianDashboard /></ProtectedRoute>} />
+            <Route path="/librarian/loans/issue" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianIssuePage /></ProtectedRoute>} />
+            <Route path="/librarian/loans/return" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianReturnPage /></ProtectedRoute>} />
+            <Route path="/librarian/scanner" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianScannerPage /></ProtectedRoute>} />
+            <Route path="/librarian/books" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianBookFondPage /></ProtectedRoute>} />
+            <Route path="/librarian/copies" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><div className="p-8">Kitob nusxalari (Tez orada...)</div></ProtectedRoute>} />
+            <Route path="/librarian/reservations" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><div className="p-8">Bronlar nazorati (Tez orada...)</div></ProtectedRoute>} />
+            <Route path="/librarian/overdue" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><div className="p-8">Muddati o'tgan kitoblar</div></ProtectedRoute>} />
+            <Route path="/librarian/reports" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><div className="p-8">Kutubxonachi Hisobotlari</div></ProtectedRoute>} />
+            <Route path="/librarian/profile" element={<ProtectedRoute allowedRoles={['librarian']}><div className="p-8">Kutubxonachi Profili</div></ProtectedRoute>} />
+            <Route path="/librarian/settings" element={<ProtectedRoute allowedRoles={['librarian']}><div className="p-8">Kutubxonachi Sozlamalari</div></ProtectedRoute>} />
+
+            {/* Tutor Routes */}
+            <Route path="/tutor" element={<ProtectedRoute allowedRoles={['tutor']}><TutorDashboard /></ProtectedRoute>} />
+            <Route path="/tutor/groups" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><AdminGroupsPage /></ProtectedRoute>} />
+            <Route path="/tutor/students" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><AdminStudentsPage /></ProtectedRoute>} />
+            <Route path="/tutor/students/:studentId" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><StudentDetailPage /></ProtectedRoute>} />
+            <Route path="/tutor/activity" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><div className="p-8">Kitob faolligi monitoringi</div></ProtectedRoute>} />
+            <Route path="/tutor/statistics" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><div className="p-8">Tyutor statistikasi</div></ProtectedRoute>} />
+            <Route path="/tutor/low-activity" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><div className="p-8">Faolligi past talabalar</div></ProtectedRoute>} />
+            <Route path="/tutor/reports" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><div className="p-8">Tyutor Hisobotlari</div></ProtectedRoute>} />
+            <Route path="/tutor/profile" element={<ProtectedRoute allowedRoles={['tutor']}><div className="p-8">Tyutor Profili</div></ProtectedRoute>} />
+            <Route path="/tutor/settings" element={<ProtectedRoute allowedRoles={['tutor']}><div className="p-8">Tyutor Sozlamalari</div></ProtectedRoute>} />
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudentsPage /></ProtectedRoute>} />
+            <Route path="/admin/tutors" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Tyutorlar boshqaruvi</div></ProtectedRoute>} />
+            <Route path="/admin/librarians" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Kutubxonachilar boshqaruvi</div></ProtectedRoute>} />
+            <Route path="/admin/groups" element={<ProtectedRoute allowedRoles={['admin']}><AdminGroupsPage /></ProtectedRoute>} />
             <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
-            <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student', 'admin']}><StudentDashboard /></ProtectedRoute>} />
-            <Route path="/librarian/*" element={<ProtectedRoute allowedRoles={['librarian', 'admin']}><LibrarianDashboard /></ProtectedRoute>} />
-            <Route path="/tutor/*" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><TutorDashboard /></ProtectedRoute>} />
+            <Route path="/admin/copies" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Admin Nusxalar boshqaruvi</div></ProtectedRoute>} />
+            <Route path="/admin/loans" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Barcha kreditlar (Berilgan kitoblar)</div></ProtectedRoute>} />
+            <Route path="/admin/reservations" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Barcha bronlar</div></ProtectedRoute>} />
+            <Route path="/admin/analitika" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalyticsPage /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Tizim Hisobotlari</div></ProtectedRoute>} />
+            <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Audit loglari</div></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettingsPage /></ProtectedRoute>} />
+            <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Admin Profili</div></ProtectedRoute>} />
         </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );

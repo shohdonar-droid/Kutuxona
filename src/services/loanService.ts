@@ -7,11 +7,15 @@ export interface Loan {
   id: string;
   studentId: string;
   studentGroupId: string;
+  studentName?: string;
   bookId: string;
+  bookTitle?: string;
   copyId: string;
   inventoryId: string;
   issuedAt: any;
   dueAt: any;
+  returnedAt?: any;
+  createdAt: string;
   status: 'ACTIVE' | 'RETURNED' | 'OVERDUE' | 'LOST' | 'DAMAGED';
 }
 
@@ -78,6 +82,13 @@ export const returnBook = async (loanId: string, copyId: string, status: Loan['s
 
 export const getStudentLoans = async (studentId: string) => {
   const q = query(collection(db, 'loans'), where('studentId', '==', studentId), where('status', '==', 'ACTIVE'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Loan));
+};
+
+export const getLoans = async (studentId?: string) => {
+  const loansRef = collection(db, 'loans');
+  const q = studentId ? query(loansRef, where('studentId', '==', studentId)) : query(loansRef);
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Loan));
 };

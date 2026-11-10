@@ -5,11 +5,20 @@ export interface Book {
   id: string;
   title: string;
   authorIds: string[];
+  author?: string;
+  subject?: string;
+  language?: string;
   isbn: string;
   isPublished: boolean;
   coverUrl?: string;
   pdfStoragePath?: string;
   annotation?: string;
+  year?: string;
+  pages?: string;
+  views?: number;
+  reads?: number;
+  favorites?: number;
+  thumbnail?: string;
 }
 
 export const getBooks = async (publishedOnly: boolean = true) => {

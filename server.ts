@@ -11,9 +11,9 @@ async function startServer() {
 
     // Initialize Admin SDK
     initializeApp({
-        projectId: 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d'
+        projectId: 'probable-wall-007pf'
     });
-    const db = getFirestore();
+    const db = getFirestore('ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d');
 
     // Schedule notification job every 15 minutes
     cron.schedule('*/15 * * * *', async () => {
