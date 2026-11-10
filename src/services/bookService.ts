@@ -1,5 +1,6 @@
 import {collection, getDocs, getDoc, doc, addDoc, updateDoc, query, where, getCountFromServer} from 'firebase/firestore';
 import {db} from '../firebase';
+import {handleFirestoreError, OperationType} from '../utils/firestoreError';
 
 export interface Book {
   id: string;
@@ -22,30 +23,59 @@ export interface Book {
 }
 
 export const getBooks = async (publishedOnly: boolean = true) => {
-  const booksRef = collection(db, 'books');
-  let q = query(booksRef);
-  if (publishedOnly) {
-    q = query(booksRef, where('isPublished', '==', true));
+  const path = 'books';
+  try {
+    const booksRef = collection(db, 'books');
+    let q = query(booksRef);
+    if (publishedOnly) {
+      q = query(booksRef, where('isPublished', '==', true));
+    }
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Book));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
   }
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Book));
 };
 
 export const getBooksCount = async () => {
-    const snapshot = await getCountFromServer(collection(db, 'books'));
-    return snapshot.data().count;
+    const path = 'books';
+    try {
+      const snapshot = await getCountFromServer(collection(db, 'books'));
+      return snapshot.data().count;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, path);
+      return 0;
+    }
 };
 
 export const getBook = async (id: string) => {
-  const docRef = doc(db, 'books', id);
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? ({id: docSnap.id, ...docSnap.data()} as Book) : null;
+  const path = `books/${id}`;
+  try {
+    const docRef = doc(db, 'books', id);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? ({id: docSnap.id, ...docSnap.data()} as Book) : null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
 };
 
 export const createBook = async (book: Omit<Book, 'id'>) => {
-  return await addDoc(collection(db, 'books'), book);
+  const path = 'books';
+  try {
+    return await addDoc(collection(db, 'books'), book);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
 };
 
 export const updateBook = async (id: string, book: Partial<Book>) => {
-  await updateDoc(doc(db, 'books', id), book);
+  const path = `books/${id}`;
+  try {
+    await updateDoc(doc(db, 'books', id), book);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
 };

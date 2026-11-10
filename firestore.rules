@@ -1,64 +1,118 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // -------------------------------------------------------------------------
+    // GLOBAL HELPERS (PHASE 3)
+    // -------------------------------------------------------------------------
     function isSignedIn() { return request.auth != null; }
-    function getUserData() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
-    function isAdmin() { return isSignedIn() && getUserData().role == 'admin'; }
-    function isLibrarian() { return isSignedIn() && getUserData().role == 'librarian'; }
-    function isTutor() { return isSignedIn() && getUserData().role == 'tutor'; }
-    function isStudent() { return isSignedIn() && getUserData().role == 'student'; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // RBAC: Roles are fetched from the trusted users collection
+    function getUserData(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
+    function isAdmin() { return isSignedIn() && getUserData(request.auth.uid).role == 'admin'; }
+    function isLibrarian() { return isSignedIn() && getUserData(request.auth.uid).role == 'librarian'; }
+    function isTutor() { return isSignedIn() && getUserData(request.auth.uid).role == 'tutor'; }
+    function isStudent() { return isSignedIn() && getUserData(request.auth.uid).role == 'student'; }
 
+    // -------------------------------------------------------------------------
+    // GLOBAL SAFETY NET
+    // -------------------------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
     }
 
-    match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isLibrarian() || isTutor());
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    // -------------------------------------------------------------------------
+    // USERS COLLECTION
+    // -------------------------------------------------------------------------
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'fullName', 'isActive', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['uid', 'email', 'role', 'fullName', 'isActive', 'createdAt', 'updatedAt', 'phone', 'photoURL', 'studentId', 'facultyId', 'directionId', 'course', 'groupId', 'groupIds']) &&
+             data.uid is string && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.role in ['student', 'librarian', 'tutor', 'admin'] &&
+             data.fullName is string && data.fullName.size() <= 256 &&
+             data.isActive is bool;
     }
 
-    match /students/{studentId} {
-      allow read: if isSignedIn() && (
-        (isStudent() && request.auth.uid == resource.data.userId) || 
-        isAdmin() || 
-        isLibrarian() || 
-        (isTutor() && getUserData().role == 'tutor' && resource.data.groupId in getUserData().groupIds)
-      );
-      allow write: if isAdmin();
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isLibrarian());
+      allow list: if isAdmin(); // Students/Tutors shouldn't scrape the user list
+      
+      allow create: if isAdmin() && isValidUser(incoming()) && incoming().createdAt == request.time;
+      
+      allow update: if (isAdmin() || (request.auth.uid == userId && isVerified())) && 
+                      isValidUser(incoming()) && 
+                      incoming().role == existing().role && // Role immutability for non-admins (though here we wrap with isAdmin check above)
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().updatedAt == request.time &&
+                      (isAdmin() || incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'photoURL', 'updatedAt']));
     }
-    
-    match /groups/{groupId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+
+    // -------------------------------------------------------------------------
+    // BOOKS COLLECTION
+    // -------------------------------------------------------------------------
+    function isValidBook(data) {
+      return data.keys().hasAll(['title', 'isbn', 'isPublished']) &&
+             data.title is string && data.title.size() <= 512 &&
+             data.isbn is string && data.isbn.size() <= 20;
     }
 
     match /books/{bookId} {
-      allow read: if resource.data.isPublished == true || isAdmin() || isLibrarian();
-      allow write: if isAdmin() || isLibrarian();
+      allow get: if isValidId(bookId) && (existing().isPublished == true || isAdmin() || isLibrarian());
+      allow list: if isAdmin() || isLibrarian() || (resource.data.isPublished == true);
+      
+      allow create: if (isAdmin() || isLibrarian()) && isValidBook(incoming());
+      allow update: if (isAdmin() || isLibrarian()) && isValidBook(incoming());
+      allow delete: if isAdmin();
     }
-    
+
+    // -------------------------------------------------------------------------
+    // BOOK COPIES COLLECTION
+    // -------------------------------------------------------------------------
     match /bookCopies/{copyId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isLibrarian();
+      allow create, update: if (isAdmin() || isLibrarian()) && isValidId(incoming().bookId);
+      allow delete: if isAdmin();
     }
 
+    // -------------------------------------------------------------------------
+    // LOANS COLLECTION
+    // -------------------------------------------------------------------------
     match /loans/{loanId} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.studentId || isAdmin() || isLibrarian() || (isTutor() && getUserData().groupIds != null && resource.data.studentGroupId in getUserData().groupIds));
-      allow write: if isAdmin() || isLibrarian();
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.studentId || isAdmin() || isLibrarian());
+      allow list: if isAdmin() || isLibrarian() || (isStudent() && resource.data.studentId == request.auth.uid);
+      
+      allow create: if (isAdmin() || isLibrarian()) && 
+                      exists(/databases/$(database)/documents/users/$(incoming().studentId)) &&
+                      exists(/databases/$(database)/documents/bookCopies/$(incoming().copyId));
+                      
+      allow update: if (isAdmin() || isLibrarian()) && 
+                      incoming().studentId == existing().studentId &&
+                      incoming().copyId == existing().copyId;
     }
 
-    match /notifications/{notificationId} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin());
-      allow write: if isAdmin();
-      allow create: if isSignedIn();
-    }
-
+    // -------------------------------------------------------------------------
+    // RESERVATIONS COLLECTION
+    // -------------------------------------------------------------------------
     match /reservations/{reservationId} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin() || isLibrarian());
-      allow write: if isAdmin() || isLibrarian();
-      allow create: if isSignedIn();
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin() || isLibrarian());
+      allow list: if isAdmin() || isLibrarian() || (isStudent() && resource.data.userId == request.auth.uid);
+      
+      allow create: if isVerified() && 
+                      incoming().userId == request.auth.uid &&
+                      exists(/databases/$(database)/documents/books/$(incoming().bookId));
+      
+      allow update: if (isAdmin() || isLibrarian() || (request.auth.uid == existing().userId && isVerified())) &&
+                      incoming().userId == existing().userId &&
+                      (isAdmin() || isLibrarian() || incoming().diff(existing()).affectedKeys().hasOnly(['status']));
     }
-    
+
+    // -------------------------------------------------------------------------
+    // SETTINGS COLLECTION
+    // -------------------------------------------------------------------------
     match /settings/library {
       allow read: if isSignedIn();
       allow write: if isAdmin();

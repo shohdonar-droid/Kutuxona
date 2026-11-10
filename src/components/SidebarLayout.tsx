@@ -12,7 +12,12 @@ export default function SidebarLayout() {
   const {profile} = useAuth();
   const location = useLocation();
 
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const isUserRoute = location.pathname.includes('/admin/librarians') || 
+                     location.pathname.includes('/admin/tutors') || 
+                     location.pathname.includes('/admin/students') ||
+                     location.pathname.includes('/admin/users');
+
+  const [userMenuOpen, setUserMenuOpen] = useState(isUserRoute);
 
   const getMenuItems = () => {
     if (!profile) return [];

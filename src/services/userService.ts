@@ -1,5 +1,6 @@
 import {doc, getDoc, setDoc, collection, getCountFromServer, query, where, getDocs} from 'firebase/firestore';
 import {db} from '../firebase';
+import {handleFirestoreError, OperationType} from '../utils/firestoreError';
 
 export interface UserProfile {
   uid: string;
@@ -20,23 +21,46 @@ export interface UserProfile {
 }
 
 export const getUserProfile = async (uid: string) => {
-  const docRef = doc(db, 'users', uid);
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? (docSnap.data() as UserProfile) : null;
+  const path = `users/${uid}`;
+  try {
+    const docRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? (docSnap.data() as UserProfile) : null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
 };
 
 export const createUserProfile = async (profile: UserProfile) => {
-  await setDoc(doc(db, 'users', profile.uid), profile);
+  const path = `users/${profile.uid}`;
+  try {
+    await setDoc(doc(db, 'users', profile.uid), profile);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
 };
 
 export const getUsersCount = async () => {
-  const snapshot = await getCountFromServer(collection(db, 'users'));
-  return snapshot.data().count;
+  const path = 'users';
+  try {
+    const snapshot = await getCountFromServer(collection(db, 'users'));
+    return snapshot.data().count;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return 0;
+  }
 };
 export const getStudentsCount = async () => {
-  const q = query(collection(db, 'users'), where('role', '==', 'student'));
-  const snapshot = await getCountFromServer(q);
-  return snapshot.data().count;
+  const path = 'users';
+  try {
+    const q = query(collection(db, 'users'), where('role', '==', 'student'));
+    const snapshot = await getCountFromServer(q);
+    return snapshot.data().count;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return 0;
+  }
 };
 
 export const getRoleCounts = async () => {
@@ -51,9 +75,15 @@ export const getRoleCounts = async () => {
 };
 
 export const getUsersByRole = async (role: string) => {
-  const q = query(collection(db, 'users'), where('role', '==', role));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(docSnap => ({uid: docSnap.id, ...docSnap.data()} as UserProfile));
+  const path = 'users';
+  try {
+    const q = query(collection(db, 'users'), where('role', '==', role));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docSnap => ({uid: docSnap.id, ...docSnap.data()} as UserProfile));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
 };
 
 export const adminCreateUser = async (data: any) => {

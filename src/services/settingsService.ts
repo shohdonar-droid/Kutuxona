@@ -1,5 +1,6 @@
 import {doc, getDoc, setDoc} from 'firebase/firestore';
 import {db} from '../firebase';
+import {handleFirestoreError, OperationType} from '../utils/firestoreError';
 
 export interface LibrarySettings {
   maxActiveLoans: number;
@@ -22,11 +23,22 @@ const DEFAULT_SETTINGS: LibrarySettings = {
 };
 
 export const getLibrarySettings = async () => {
-  const docRef = doc(db, 'settings', 'library');
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? (docSnap.data() as LibrarySettings) : DEFAULT_SETTINGS;
+  const path = 'settings/library';
+  try {
+    const docRef = doc(db, 'settings', 'library');
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? (docSnap.data() as LibrarySettings) : DEFAULT_SETTINGS;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return DEFAULT_SETTINGS;
+  }
 };
 
 export const updateLibrarySettings = async (settings: LibrarySettings) => {
-  await setDoc(doc(db, 'settings', 'library'), settings);
+  const path = 'settings/library';
+  try {
+    await setDoc(doc(db, 'settings', 'library'), settings);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
 };

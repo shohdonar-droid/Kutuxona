@@ -14,9 +14,6 @@ import BookManagementPage from './pages/admin/BookManagementPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
-import AdminStudentsPage from './pages/admin/AdminStudentsPage';
-import AdminLibrariansPage from './pages/admin/AdminLibrariansPage';
-import AdminTutorsPage from './pages/admin/AdminTutorsPage';
 import AdminGroupsPage from './pages/admin/AdminGroupsPage';
 import StudentDetailPage from './pages/tutor/StudentDetailPage';
 import PDFReader from './pages/student/PDFReader';
@@ -86,7 +83,7 @@ export default function App() {
             {/* Tutor Routes */}
             <Route path="/tutor" element={<ProtectedRoute allowedRoles={['tutor']}><TutorDashboard /></ProtectedRoute>} />
             <Route path="/tutor/groups" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><AdminGroupsPage /></ProtectedRoute>} />
-            <Route path="/tutor/students" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><AdminStudentsPage /></ProtectedRoute>} />
+            <Route path="/tutor/students" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/tutor/students/:studentId" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><StudentDetailPage /></ProtectedRoute>} />
             <Route path="/tutor/activity" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><div className="p-8">Kitob faolligi monitoringi</div></ProtectedRoute>} />
             <Route path="/tutor/statistics" element={<ProtectedRoute allowedRoles={['tutor', 'admin']}><div className="p-8">Tyutor statistikasi</div></ProtectedRoute>} />
@@ -98,9 +95,9 @@ export default function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
-            <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudentsPage /></ProtectedRoute>} />
-            <Route path="/admin/tutors" element={<ProtectedRoute allowedRoles={['admin']}><AdminTutorsPage /></ProtectedRoute>} />
-            <Route path="/admin/librarians" element={<ProtectedRoute allowedRoles={['admin']}><AdminLibrariansPage /></ProtectedRoute>} />
+            <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/tutors" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/librarians" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/groups" element={<ProtectedRoute allowedRoles={['admin']}><AdminGroupsPage /></ProtectedRoute>} />
             <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
             <Route path="/admin/copies" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Admin Nusxalar boshqaruvi</div></ProtectedRoute>} />
