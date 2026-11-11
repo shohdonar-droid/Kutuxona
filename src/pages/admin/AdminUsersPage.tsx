@@ -1,15 +1,15 @@
 import {useEffect, useState} from 'react';
 import {useLocation} from 'react-router-dom';
-import {collection, getDocs, updateDoc, doc} from 'firebase/firestore';
+import {updateDoc, doc} from 'firebase/firestore';
 import {db} from '../../firebase';
-import {getUsersByRole, adminCreateUser, UserProfile} from '../../services/userService';
+import {getUsersByRole, adminCreateUser, adminResetPassword, UserProfile} from '../../services/userService';
 import {useAuth} from '../../context/AuthContext';
 import PageHeader from '../../components/PageHeader';
 import {Card, Badge, Button} from '../../components/UIComponents';
 import {
-    Search, Filter, UserCog, Mail, Shield, UserCheck, UserMinus, 
+    Search, Filter, UserCog, Mail, UserCheck, UserMinus, 
     Plus, UserPlus, GraduationCap, Users, BookOpenText, User, 
-    FileSpreadsheet, Upload, Phone
+    FileSpreadsheet, Download, Phone, RefreshCw, Smartphone, BookOpen, Key
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -19,7 +19,6 @@ export default function AdminUsersPage() {
   const {profile} = useAuth();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-      if (profile?.role !== 'admin') return 'students';
       if (location.pathname.includes('students')) return 'students';
       if (location.pathname.includes('tutors')) return 'tutors';
       if (location.pathname.includes('librarians')) return 'librarians';
@@ -34,12 +33,14 @@ export default function AdminUsersPage() {
 
   // Form states
   const [formData, setFormData] = useState({
-      email: '', 
+      loginId: '', // ID or Login
       password: '', 
       fullName: '', 
       phone: '', 
       studentId: '', 
-      groupId: ''
+      groupId: '',
+      course: '',
+      direction: ''
   });
 
   useEffect(() => {
@@ -74,12 +75,21 @@ export default function AdminUsersPage() {
     setSubmitting(true);
     try {
         const role = activeTab.slice(0, -1) as any;
-        await adminCreateUser({
+        const actualRole = role === 'librarian' ? 'librarian' : role === 'tutor' ? 'tutor' : 'student';
+        
+        // Auto generate email from Login ID
+        const email = `${formData.loginId.trim()}@tdtu.uz`;
+        
+        let payload: any = { 
             ...formData, 
-            role: role === 'librarian' ? 'librarian' : role === 'tutor' ? 'tutor' : 'student'
-        });
+            email,
+            role: actualRole,
+            studentId: actualRole === 'student' ? formData.loginId : (formData.studentId || '')
+        };
+
+        await adminCreateUser(payload);
         setShowForm(false);
-        setFormData({email: '', password: '', fullName: '', phone: '', studentId: '', groupId: ''});
+        setFormData({loginId: '', password: '', fullName: '', phone: '', studentId: '', groupId: '', course: '', direction: ''});
         fetchUsersByTab();
         alert("Foydalanuvchi muvaffaqiyatli yaratildi!");
     } catch (err: any) {
@@ -108,13 +118,26 @@ export default function AdminUsersPage() {
 
             for (const item of data) {
                 try {
-                    // Expecting columns: F.I.Sh., Email, Parol, StudentID, Guruh
+                    // ID, FISH, kursi, yonalishi, guruhi, tel raqami, parol
+                    const loginId = String(item['ID'] || item['Talaba ID'] || item['id'] || '').trim();
+                    const fullName = item['FISH'] || item['F.I.Sh.'] || item['fish'];
+                    const course = String(item['kursi'] || item['Kursi'] || '');
+                    const direction = item['yonalishi'] || item['Yo\'nalishi'] || item['yo\'nalish'];
+                    const groupId = String(item['guruhi'] || item['Guruhi'] || '');
+                    const phone = String(item['tel raqami'] || item['Telefon'] || item['tel']);
+                    const password = String(item['parol'] || item['Parol'] || '123456');
+
+                    if (!loginId || !fullName) continue;
+
                     await adminCreateUser({
-                        fullName: item['F.I.Sh.'] || item['Full Name'],
-                        email: item['Email'],
-                        password: String(item['Parol'] || item['Password'] || '123456'),
-                        studentId: String(item['StudentID'] || item['ID']),
-                        groupId: String(item['Guruh'] || item['Group']),
+                        fullName,
+                        email: `${loginId}@tdtu.uz`,
+                        password,
+                        studentId: loginId,
+                        course: parseInt(course) || 1,
+                        directionId: direction || '',
+                        groupId: groupId || '',
+                        phone: phone || '',
                         role: 'student'
                     });
                     success++;
@@ -130,18 +153,44 @@ export default function AdminUsersPage() {
             alert("Excel faylni o'qishda xatolik yuz berdi.");
         } finally {
             setImporting(false);
+            e.target.value = '';
         }
     };
     reader.readAsBinaryString(file);
   };
 
+  const downloadTemplate = () => {
+      const template = [
+          { 'ID': '220101', 'FISH': 'Aliev Ali', 'kursi': '3', 'yonalishi': 'Tibbiy pedagogika', 'guruhi': '302', 'tel raqami': '+998901234567', 'parol': '123456' }
+      ];
+      const ws = XLSX.utils.json_to_sheet(template);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Talabalar");
+      XLSX.writeFile(wb, "talaba_import_shabloni.xlsx");
+  };
+
   const toggleStatus = async (user: UserProfile) => {
     try {
-        await updateDoc(doc(db, 'users', user.uid), {isActive: !user.isActive});
+        await updateDoc(doc(db, 'users', user.uid), {isActive: !user.isActive, updatedAt: new Date().toISOString()});
         setUsers(users.map(u => u.uid === user.uid ? {...u, isActive: !u.isActive} : u));
     } catch (err) {
         alert("Xatolik yuz berdi");
     }
+  };
+
+  const handleResetPassword = async (user: UserProfile) => {
+      if (!user.initialPassword) {
+          alert("Ushbu foydalanuvchi uchun boshlang'ich parol saqlanmagan.");
+          return;
+      }
+      if (!window.confirm(`Haqiqatan ham ${user.fullName} parolini '${user.initialPassword}' ga qaytarmoqchimisiz?`)) return;
+
+      try {
+          await adminResetPassword(user.uid, user.initialPassword);
+          alert("Parol muvaffaqiyatli tiklandi!");
+      } catch (err: any) {
+          alert("Xatolik: " + err.message);
+      }
   };
 
   const filteredUsers = users.filter(user => 
@@ -165,22 +214,27 @@ export default function AdminUsersPage() {
             profile?.role === 'admin' ? (
                 <div className="flex gap-2">
                     {activeTab === 'students' && (
-                        <div className="relative">
-                            <input 
-                                type="file" 
-                                accept=".xlsx, .xls" 
-                                className="hidden" 
-                                id="excel-upload" 
-                                onChange={handleExcelImport}
-                                disabled={importing}
-                            />
-                            <label 
-                                htmlFor="excel-upload" 
-                                className={`flex items-center gap-2 px-5 py-2.5 bg-green-50 text-green-700 rounded-lg font-bold text-sm cursor-pointer border border-green-100 hover:bg-green-100 transition-all ${importing ? 'opacity-50 pointer-events-none' : ''}`}
-                            >
-                                <FileSpreadsheet size={18} /> {importing ? 'Yuklanmoqda...' : 'Excel Import'}
-                            </label>
-                        </div>
+                        <>
+                            <Button variant="secondary" onClick={downloadTemplate} className="bg-white border-blue-100 text-blue-600">
+                                <Download size={18} /> Shablonni yuklash
+                            </Button>
+                            <div className="relative">
+                                <input 
+                                    type="file" 
+                                    accept=".xlsx, .xls" 
+                                    className="hidden" 
+                                    id="excel-upload" 
+                                    onChange={handleExcelImport}
+                                    disabled={importing}
+                                />
+                                <label 
+                                    htmlFor="excel-upload" 
+                                    className={`flex items-center gap-2 px-5 py-2.5 bg-green-50 text-green-700 rounded-lg font-bold text-sm cursor-pointer border border-green-100 hover:bg-green-100 transition-all ${importing ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                    <FileSpreadsheet size={18} /> {importing ? 'Yuklanmoqda...' : 'Excel Import'}
+                                </label>
+                            </div>
+                        </>
                     )}
                     <Button onClick={() => setShowForm(!showForm)}>
                         <Plus size={18} /> {showForm ? 'Bekor qilish' : `Yangi ${activeTab === 'students' ? 'talaba' : activeTab === 'tutors' ? 'tyutor' : 'kutubxonachi'}`}
@@ -230,16 +284,21 @@ export default function AdminUsersPage() {
                         placeholder="To'liq ism familiya"
                     />
                 </div>
+                
                 <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">Email</label>
-                    <input 
-                        type="email" required
-                        className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                        value={formData.email}
-                        onChange={e => setFormData({...formData, email: e.target.value})}
-                        placeholder="example@tdtu.uz"
-                    />
+                    <label className="text-sm font-bold text-gray-700">Login (ID)</label>
+                    <div className="relative">
+                        <input 
+                            type="text" required
+                            className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                            value={formData.loginId}
+                            onChange={e => setFormData({...formData, loginId: e.target.value})}
+                            placeholder="220101"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-bold">@tdtu.uz</span>
+                    </div>
                 </div>
+
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-700">Parol</label>
                     <input 
@@ -250,16 +309,34 @@ export default function AdminUsersPage() {
                         placeholder="Kamida 6 ta belgi"
                     />
                 </div>
-                {activeTab === 'students' ? (
+
+                {activeTab === 'students' && (
                     <>
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Student ID</label>
+                            <label className="text-sm font-bold text-gray-700">Kursi</label>
+                            <select 
+                                className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                value={formData.course}
+                                onChange={e => setFormData({...formData, course: e.target.value})}
+                                required
+                            >
+                                <option value="">Tanlang</option>
+                                <option value="1">1-kurs</option>
+                                <option value="2">2-kurs</option>
+                                <option value="3">3-kurs</option>
+                                <option value="4">4-kurs</option>
+                                <option value="5">5-kurs</option>
+                                <option value="6">6-kurs</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Yo'nalishi</label>
                             <input 
                                 type="text" required
                                 className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                value={formData.studentId}
-                                onChange={e => setFormData({...formData, studentId: e.target.value})}
-                                placeholder="Talaba guvohnoma raqami"
+                                value={formData.direction}
+                                onChange={e => setFormData({...formData, direction: e.target.value})}
+                                placeholder="Masalan: Tibbiy pedagogika"
                             />
                         </div>
                         <div className="space-y-2">
@@ -269,22 +346,23 @@ export default function AdminUsersPage() {
                                 className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                 value={formData.groupId}
                                 onChange={e => setFormData({...formData, groupId: e.target.value})}
-                                placeholder="Masalan: 302-guruh"
+                                placeholder="Masalan: 302"
                             />
                         </div>
                     </>
-                ) : (
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Telefon</label>
-                        <input 
-                            type="tel"
-                            className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            value={formData.phone}
-                            onChange={e => setFormData({...formData, phone: e.target.value})}
-                            placeholder="+998"
-                        />
-                    </div>
                 )}
+
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-700">Telefon raqami</label>
+                    <input 
+                        type="tel"
+                        className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        value={formData.phone}
+                        onChange={e => setFormData({...formData, phone: e.target.value})}
+                        placeholder="+998"
+                    />
+                </div>
+
                 <div className="md:col-span-2 pt-4">
                     <Button type="submit" className="w-full justify-center py-4 text-lg shadow-lg shadow-blue-900/20" disabled={submitting}>
                         {submitting ? 'Yaratilmoqda...' : 'Hisobni saqlash'}
@@ -320,8 +398,9 @@ export default function AdminUsersPage() {
                           <th className="px-6 py-4">Foydalanuvchi</th>
                           {activeTab === 'students' ? (
                               <>
+                                  <th className="px-6 py-4">Kurs / Yo'nalish</th>
                                   <th className="px-6 py-4">Guruh</th>
-                                  <th className="px-6 py-4">ID</th>
+                                  <th className="px-6 py-4">Talaba ID</th>
                               </>
                           ) : (
                               <th className="px-6 py-4">Kontakt</th>
@@ -332,9 +411,9 @@ export default function AdminUsersPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                       {loading ? (
-                          <tr><td colSpan={5} className="p-10 text-center text-gray-400 italic font-medium animate-pulse">Yuklanmoqda...</td></tr>
+                          <tr><td colSpan={activeTab === 'students' ? 6 : 4} className="p-10 text-center text-gray-400 italic font-medium animate-pulse">Yuklanmoqda...</td></tr>
                       ) : filteredUsers.length === 0 ? (
-                          <tr><td colSpan={5} className="p-20 text-center text-gray-400 italic flex flex-col items-center">
+                          <tr><td colSpan={activeTab === 'students' ? 6 : 4} className="p-20 text-center text-gray-400 italic flex flex-col items-center">
                               <Users size={48} className="mb-4 opacity-20" />
                               Foydalanuvchilar topilmadi.
                           </td></tr>
@@ -352,14 +431,23 @@ export default function AdminUsersPage() {
                                       </div>
                                       <div>
                                           <p className="text-sm font-bold text-gray-900">{user.fullName}</p>
-                                          <p className="text-[10px] text-gray-400 font-medium">{user.email}</p>
+                                          <div className="flex items-center gap-2 mt-1">
+                                              <Smartphone size={10} className="text-gray-300" />
+                                              <p className="text-[10px] text-gray-400 font-medium">{user.phone || 'Tel kiritilmagan'}</p>
+                                          </div>
                                       </div>
                                   </div>
                               </td>
                               {activeTab === 'students' ? (
                                   <>
                                       <td className="px-6 py-4">
-                                          <Badge variant="blue">{user.groupId || 'Noma\'lum'}</Badge>
+                                          <div className="flex flex-col">
+                                              <span className="text-xs font-bold text-gray-700">{user.course}-kurs</span>
+                                              <span className="text-[10px] text-gray-400 font-medium truncate max-w-[150px]">{user.directionId || 'Yo\'nalish'}</span>
+                                          </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                          <Badge variant="blue">{user.groupId || '-'}</Badge>
                                       </td>
                                       <td className="px-6 py-4 font-mono text-xs text-gray-500">
                                           {user.studentId || '-'}
@@ -367,23 +455,27 @@ export default function AdminUsersPage() {
                                   </>
                               ) : (
                                   <td className="px-6 py-4">
-                                      <div className="flex flex-col gap-1">
-                                          {user.phone && <div className="flex items-center gap-2 text-xs text-gray-600 font-medium"><Phone size={12} className="text-gray-300" /> {user.phone}</div>}
-                                          <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium italic"><Mail size={10} /> {user.email}</div>
-                                      </div>
+                                      <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium"><Mail size={12} className="text-gray-300" /> {user.email}</div>
                                   </td>
                               )}
                               <td className="px-6 py-4 text-center">
-                                  <Badge variant={user.isActive ? 'green' : 'red'}>{user.isActive ? 'Aktiv' : 'Nofaol'}</Badge>
+                                  <Badge variant={user.isActive ? 'green' : 'red'}>{user.isActive ? 'Faol' : 'Nofaol'}</Badge>
                               </td>
                               <td className="px-6 py-4 text-right">
                                   <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button 
                                         onClick={() => toggleStatus(user)}
                                         className={`p-2 rounded-lg transition-colors ${user.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
-                                        title={user.isActive ? 'Bloklash' : 'Faollashtirish'}
+                                        title={user.isActive ? 'Nofaol qilish' : 'Faollashtirish'}
                                       >
                                           {user.isActive ? <UserMinus size={18} /> : <UserCheck size={18} />}
+                                      </button>
+                                      <button 
+                                        onClick={() => handleResetPassword(user)}
+                                        className="p-2 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors"
+                                        title="Parolni tiklash"
+                                      >
+                                          <RefreshCw size={18} />
                                       </button>
                                       <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
                                           <UserCog size={18} />

@@ -15,6 +15,7 @@ export interface UserProfile {
   course?: number;
   groupId?: string;
   isActive: boolean;
+  initialPassword?: string;
   groupIds?: string[];
   createdAt: string;
   updatedAt: string;
@@ -98,6 +99,22 @@ export const adminCreateUser = async (data: any) => {
     if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || 'Failed to create user');
+    }
+    return await response.json();
+};
+
+export const adminResetPassword = async (uid: string, password: string) => {
+    const response = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'TDTU_ADMIN_SECRET'
+        },
+        body: JSON.stringify({ uid, password })
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to reset password');
     }
     return await response.json();
 };

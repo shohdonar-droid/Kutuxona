@@ -7,47 +7,58 @@ import {useNavigate} from 'react-router-dom';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError(null);
     try {
-      let authEmail = email;
+      let authEmail = email.trim();
       let authPassword = password;
 
-      // Hardcoded admin check
+      // 1. Admin login shortcut (from previous logic)
       if (email === 'admin1' && password === '12345a') {
         authEmail = 'admin@tdtu.uz';
-        authPassword = 'admin123'; // The actual firebase password
-      } else if (!authEmail.includes('@')) {
-        setError('Yaroqsiz email manzili.');
-        return;
+        authPassword = 'admin123';
+      } 
+      // 2. ID to Email mapping (Student ID login)
+      else if (!authEmail.includes('@')) {
+        authEmail = `${authEmail}@tdtu.uz`;
       }
 
       const {user} = await signInWithEmailAndPassword(auth, authEmail, authPassword);
-      console.log("Logged in user:", user.uid);
       const profile = await getUserProfile(user.uid);
-      console.log("Fetched profile:", profile);
       
       if (!profile) {
+        await auth.signOut();
         setError('Profil topilmadi. Iltimos, admin bilan bog\'laning.');
         return;
       }
 
-      if (profile?.role === 'student') navigate('/student');
-      else if (profile?.role === 'librarian') navigate('/librarian');
-      else if (profile?.role === 'tutor') navigate('/tutor');
-      else if (profile?.role === 'admin') navigate('/admin');
-      else navigate('/'); // Fallback if role is undefined
+      // 3. Activation check
+      if (!profile.isActive) {
+          await auth.signOut();
+          setError('Sizning hisobingiz faol emas. Iltimos, faollashtirish uchun admin bilan bog\'laning.');
+          return;
+      }
+
+      if (profile.role === 'student') navigate('/student');
+      else if (profile.role === 'librarian') navigate('/librarian');
+      else if (profile.role === 'tutor') navigate('/tutor');
+      else if (profile.role === 'admin') navigate('/admin');
+      else navigate('/');
     } catch (err: any) {
       console.error("Login error:", err);
-      if (err.code === 'auth/invalid-email') setError('Yaroqsiz email manzili.');
+      if (err.code === 'auth/invalid-email') setError('Yaroqsiz email manzili yoki ID.');
       else if (err.code === 'auth/user-not-found') setError('Foydalanuvchi topilmadi.');
       else if (err.code === 'auth/wrong-password') setError('Parol noto\'g\'ri.');
-      else if (err.code === 'auth/invalid-credential') setError('Email yoki parol noto\'g\'ri.');
+      else if (err.code === 'auth/invalid-credential') setError('Email/ID yoki parol noto\'g\'ri.');
       else setError('Login xatosi: ' + err.message);
+    } finally {
+        setLoading(false);
     }
   };
 

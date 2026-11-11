@@ -60,6 +60,7 @@ async function startServer() {
                 fullName,
                 role,
                 isActive: true,
+                initialPassword: password, // Store initial password for reset logic
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 ...extra
@@ -69,6 +70,23 @@ async function startServer() {
             res.status(200).json({ uid: userRecord.uid });
         } catch (e: any) {
             console.error("User creation error:", e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    app.post('/api/admin/users/reset-password', async (req, res) => {
+        if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
+            return res.status(401).send('Unauthorized');
+        }
+        const { uid, password } = req.body;
+        const { getAuth } = await import('firebase-admin/auth');
+        const auth = getAuth();
+
+        try {
+            await auth.updateUser(uid, { password });
+            res.status(200).json({ success: true });
+        } catch (e: any) {
+            console.error("Password reset error:", e);
             res.status(500).json({ error: e.message });
         }
     });
