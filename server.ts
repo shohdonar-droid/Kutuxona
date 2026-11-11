@@ -49,19 +49,34 @@ async function startServer() {
             const { email, password, fullName, role, ...extra } = req.body;
             
             if (!email || !password || !fullName || !role) {
-                return res.status(400).json({ error: 'Required fields missing: email, password, fullName, role' });
+                return res.status(400).json({ error: 'Barcha maydonlar to‘ldirilishi shart: email, password, fullName, role' });
+            }
+
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo‘lishi kerak.' });
             }
 
             const { getAuth } = await import('firebase-admin/auth');
             const auth = getAuth();
             
-            console.log(`Attempting to create user: ${email} with role: ${role}`);
+            console.log(`Admin creating user: ${email} (${role})`);
 
-            const userRecord = await auth.createUser({
-                email,
-                password,
-                displayName: fullName
-            });
+            let userRecord;
+            try {
+                userRecord = await auth.createUser({
+                    email,
+                    password,
+                    displayName: fullName
+                });
+            } catch (authError: any) {
+                console.error("Auth creation failed:", authError);
+                if (authError.code === 'auth/email-already-exists') {
+                    // Try to find the existing user to sync Firestore if needed, 
+                    // but usually we should just return error
+                    return res.status(409).json({ error: 'Ushbu email/ID bilan foydalanuvchi allaqachon mavjud.' });
+                }
+                throw authError;
+            }
             
             const profile = {
                 uid: userRecord.uid,
@@ -69,20 +84,19 @@ async function startServer() {
                 fullName,
                 role,
                 isActive: true,
-                initialPassword: password, // Store initial password for reset logic
+                initialPassword: password, 
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 ...extra
             };
             
             await db.collection('users').doc(userRecord.uid).set(profile);
-            console.log(`User created successfully: ${userRecord.uid}`);
+            console.log(`User and profile created: ${userRecord.uid}`);
             res.status(200).json({ uid: userRecord.uid });
         } catch (e: any) {
-            console.error("User creation error detail:", e);
-            const errorMessage = e.message || String(e);
+            console.error("User creation deep error:", e);
             res.status(500).json({ 
-                error: errorMessage,
+                error: e.message || 'Tizimda kutilmagan xatolik yuz berdi.',
                 code: e.code || 'unknown'
             });
         }

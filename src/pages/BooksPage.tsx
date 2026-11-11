@@ -6,6 +6,8 @@ import {Search, Filter, BookOpen, ChevronRight, LayoutGrid, List, SlidersHorizon
 import {Card, Badge, Button} from '../components/UIComponents';
 import PageHeader from '../components/PageHeader';
 
+import {Eye, Heart} from 'lucide-react';
+
 function BookCard({book, viewMode}: {book: Book, viewMode: 'grid' | 'list'}) {
     const [availability, setAvailability] = useState<{available: number, total: number} | null>(null);
 
@@ -20,7 +22,7 @@ function BookCard({book, viewMode}: {book: Book, viewMode: 'grid' | 'list'}) {
         return (
             <Link to={`/books/${book.id}`} className="group">
                 <Card className="p-0 overflow-hidden border-0 bg-transparent shadow-none hover:-translate-y-2 transition-transform duration-500">
-                    <div className="aspect-[3/4] rounded-2xl overflow-hidden mb-4 shadow-lg group-hover:shadow-2xl transition-shadow relative">
+                    <div className="aspect-[3/4] rounded-3xl overflow-hidden mb-4 shadow-lg group-hover:shadow-2xl transition-shadow relative">
                         {book.coverUrl ? (
                             <img src={book.coverUrl} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                         ) : (
@@ -32,10 +34,25 @@ function BookCard({book, viewMode}: {book: Book, viewMode: 'grid' | 'list'}) {
                                 <Package size={10} /> {availabilityText}
                             </div>
                         </div>
+                        {/* Overlay Stats */}
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-white">
+                            <div className="flex items-center gap-1 text-[10px] font-black">
+                                <Eye size={12} /> {book.views || 0}
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] font-black">
+                                <Heart size={12} className="text-pink-400 fill-current" /> {book.favorites || 0}
+                            </div>
+                        </div>
                     </div>
                     <div className="px-1">
-                        <h3 className="text-sm font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">{book.title}</h3>
-                        <p className="text-xs text-gray-500 mt-1 font-bold">{book.author || "Muallif noma'lum"}</p>
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                            <h3 className="text-sm font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors flex-1">{book.title}</h3>
+                            <div className="flex flex-col items-end shrink-0 md:hidden">
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400"><Eye size={10} /> {book.views || 0}</div>
+                                <div className="flex items-center gap-1 text-[9px] font-bold text-pink-400"><Heart size={10} className="fill-current" /> {book.favorites || 0}</div>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-500 font-bold">{book.author || "Muallif noma'lum"}</p>
                     </div>
                 </Card>
             </Link>

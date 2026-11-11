@@ -5,7 +5,7 @@ import {getBookAvailability} from '../services/bookCopyService';
 import {addFavorite, removeFavorite, getUserFavorites} from '../services/favoriteService';
 import {useAuth} from '../context/AuthContext';
 import {Card, Badge, Button} from '../components/UIComponents';
-import {BookOpen, Heart, Bookmark, Info, AlertCircle, ChevronLeft} from 'lucide-react';
+import {BookOpen, Heart, Bookmark, Info, AlertCircle, ChevronLeft, Eye} from 'lucide-react';
 
 export default function BookDetailPage() {
   const {id} = useParams<{id: string}>();
@@ -143,7 +143,15 @@ export default function BookDetailPage() {
                 </div>
                 <div className="space-y-1">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ko‘rishlar</p>
-                    <p className="text-sm font-bold text-gray-700">{book.views || '1,240'}</p>
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-blue-600">
+                        <Eye size={16} /> {book.views || 0}
+                    </div>
+                </div>
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sevimli</p>
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-pink-600">
+                        <Heart size={16} className="fill-current" /> {book.favorites || 0}
+                    </div>
                 </div>
             </div>
 

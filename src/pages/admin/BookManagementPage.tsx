@@ -18,6 +18,7 @@ export default function BookManagementPage() {
     annotation: '', year: '2024', pages: '', copiesCount: 50
   });
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchBooks();
@@ -39,15 +40,24 @@ export default function BookManagementPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-        // 1. Upload PDF if exists
+        // 1. Upload files
         let pdfUrl = '';
         let pdfPath = '';
+        let coverUrl = '';
+
         if (pdfFile) {
-            const path = `books/${Date.now()}_${pdfFile.name}`;
+            const path = `books/pdfs/${Date.now()}_${pdfFile.name}`;
             const storageRef = ref(storage, path);
             await uploadBytes(storageRef, pdfFile);
             pdfUrl = await getDownloadURL(storageRef);
             pdfPath = path;
+        }
+
+        if (coverFile) {
+            const path = `books/covers/${Date.now()}_${coverFile.name}`;
+            const storageRef = ref(storage, path);
+            await uploadBytes(storageRef, coverFile);
+            coverUrl = await getDownloadURL(storageRef);
         }
 
         // 2. Create Book doc
@@ -61,10 +71,13 @@ export default function BookManagementPage() {
             year: formData.year,
             pages: formData.pages,
             isPublished: true,
-            authorIds: [], // Placeholder
-            coverUrl: '', // Placeholder or logic to upload cover
+            authorIds: [], 
+            coverUrl: coverUrl,
             pdfStoragePath: pdfPath,
             pdfUrl: pdfUrl,
+            views: 0,
+            reads: 0,
+            favorites: 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -73,7 +86,7 @@ export default function BookManagementPage() {
         
         // 3. Create initial copies
         if (formData.copiesCount > 0) {
-            const prefix = formData.title.substring(0, 3).toUpperCase();
+            const prefix = formData.title.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'B');
             await createBookCopies(docRef.id, formData.copiesCount, prefix);
         }
 
@@ -84,8 +97,10 @@ export default function BookManagementPage() {
             annotation: '', year: '2024', pages: '', copiesCount: 50
         });
         setPdfFile(null);
+        setCoverFile(null);
         fetchBooks();
     } catch (err: any) {
+        console.error("Creation error:", err);
         alert("Xatolik: " + err.message);
     } finally {
         setSubmitting(false);
@@ -164,14 +179,28 @@ export default function BookManagementPage() {
                         value={formData.annotation} onChange={e => setFormData({...formData, annotation: e.target.value})} />
                 </div>
 
-                <div className="md:col-span-3">
-                    <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:bg-gray-50 transition-all cursor-pointer group relative">
-                        <input type="file" accept="application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" 
-                            onChange={e => setPdfFile(e.target.files?.[0] || null)} />
-                        <div className="flex flex-col items-center">
-                            <Upload className="text-gray-300 group-hover:text-blue-500 mb-2" size={40} />
-                            <p className="font-bold text-gray-500">{pdfFile ? pdfFile.name : 'Elektron shaklini yuklash (PDF)'}</p>
-                            <p className="text-xs text-gray-400 mt-1">Faylni shu yerga tashlang yoki bosing</p>
+                <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700">Muqova rasmi (JPG/PNG)</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center hover:bg-gray-50 transition-all cursor-pointer group relative">
+                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" 
+                                onChange={e => setCoverFile(e.target.files?.[0] || null)} />
+                            <div className="flex flex-col items-center">
+                                <Upload className="text-gray-300 group-hover:text-blue-500 mb-2" size={32} />
+                                <p className="font-bold text-gray-500 text-xs truncate max-w-full px-4">{coverFile ? coverFile.name : 'Muqovani yuklash'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700">Elektron shakli (PDF)</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center hover:bg-gray-50 transition-all cursor-pointer group relative">
+                            <input type="file" accept="application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" 
+                                onChange={e => setPdfFile(e.target.files?.[0] || null)} />
+                            <div className="flex flex-col items-center">
+                                <FileText className="text-gray-300 group-hover:text-blue-500 mb-2" size={32} />
+                                <p className="font-bold text-gray-500 text-xs truncate max-w-full px-4">{pdfFile ? pdfFile.name : 'PDF faylni yuklash'}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
