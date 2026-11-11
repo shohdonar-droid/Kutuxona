@@ -6,6 +6,7 @@ export interface Book {
   id: string;
   title: string;
   authorIds: string[];
+  categoryIds?: string[];
   author?: string;
   subject?: string;
   language?: string;
@@ -13,6 +14,7 @@ export interface Book {
   isPublished: boolean;
   coverUrl?: string;
   pdfStoragePath?: string;
+  pdfUrl?: string;
   annotation?: string;
   year?: string;
   pages?: string;
@@ -20,16 +22,28 @@ export interface Book {
   reads?: number;
   favorites?: number;
   thumbnail?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export const getBooks = async (publishedOnly: boolean = true) => {
+export const getBooks = async (publishedOnly: boolean = true, categoryId?: string) => {
   const path = 'books';
   try {
     const booksRef = collection(db, 'books');
     let q = query(booksRef);
+    
+    const constraints: any[] = [];
     if (publishedOnly) {
-      q = query(booksRef, where('isPublished', '==', true));
+      constraints.push(where('isPublished', '==', true));
     }
+    if (categoryId) {
+      constraints.push(where('categoryIds', 'array-contains', categoryId));
+    }
+    
+    if (constraints.length > 0) {
+      q = query(booksRef, ...constraints);
+    }
+
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({id: doc.id, ...doc.data()} as Book));
   } catch (error) {

@@ -3,7 +3,7 @@ import {Link} from 'react-router-dom';
 import {
   Users, BookOpen, BarChart3, Settings, ShieldAlert, GraduationCap, User, 
   BookOpenText, Package, ArrowLeftRight, BookCheck, AlertTriangle, ArrowRight,
-  TrendingUp, Activity, ClipboardList
+  TrendingUp, Activity, ClipboardList, Tag
 } from 'lucide-react';
 import {getUsersCount, getStudentsCount} from '../../services/userService';
 import {getBooksCount} from '../../services/bookService';
@@ -13,20 +13,26 @@ import {StatCard, Card, Badge, Button} from '../../components/UIComponents';
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     users: 0, students: 0, tutors: 0, librarians: 0, 
-    books: 0, copies: 0, activeLoans: 0, overdue: 0
+    books: 0, copies: 0, activeLoans: 0, overdue: 0,
+    categories: 0
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchData = async () => {
         try {
-            const [users, books, students, activeLoans] = await Promise.all([
+            const [users, books, students, activeLoans, categories] = await Promise.all([
                 getUsersCount(),
                 getBooksCount(),
                 getStudentsCount(),
-                getActiveLoansCount()
+                getActiveLoansCount(),
+                import('../../services/categoryService').then(m => m.getCategories())
             ]);
-            setStats(prev => ({ ...prev, users, students, books, activeLoans }));
+            setStats(prev => ({ 
+                ...prev, 
+                users, students, books, activeLoans,
+                categories: categories.length 
+            }));
         } catch (err) {
             console.error("Error fetching admin dashboard stats:", err);
         } finally {
@@ -38,10 +44,10 @@ export default function AdminDashboard() {
 
   const quickActions = [
     { name: 'Kitob qo‘shish', path: '/admin/books', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { name: 'Kategoriyalar', path: '/admin/categories', icon: Tag, color: 'text-orange-600', bg: 'bg-orange-50' },
     { name: 'Talaba qo‘shish', path: '/admin/students', icon: GraduationCap, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { name: 'Guruh boshqarish', path: '/admin/groups', icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
     { name: 'Tizim Hisoboti', path: '/admin/reports', icon: ClipboardList, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { name: 'Audit loglari', path: '/admin/audit', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
   ];
 
   if (loading) return <div className="p-8 text-center text-blue-900 font-bold">Yuklanmoqda...</div>;
@@ -61,11 +67,12 @@ export default function AdminDashboard() {
       </div>
       
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard title="Foydalanuvchilar" value={stats.users} icon={Users} color="text-blue-600" />
         <StatCard title="Talabalar" value={stats.students} icon={GraduationCap} color="text-indigo-600" />
         <StatCard title="Kitoblar" value={stats.books} icon={BookOpen} color="text-emerald-600" />
-        <StatCard title="Faol kreditlar" value={stats.activeLoans} icon={ArrowLeftRight} color="text-orange-500" />
+        <StatCard title="Kategoriyalar" value={stats.categories} icon={Tag} color="text-orange-500" />
+        <StatCard title="Faol kreditlar" value={stats.activeLoans} icon={ArrowLeftRight} color="text-pink-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

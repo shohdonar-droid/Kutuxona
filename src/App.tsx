@@ -26,6 +26,7 @@ import LibrarianIssuePage from './pages/librarian/LibrarianIssuePage';
 import LibrarianReturnPage from './pages/librarian/LibrarianReturnPage';
 import LibrarianScannerPage from './pages/librarian/LibrarianScannerPage';
 import LibrarianBookFondPage from './pages/librarian/LibrarianBookFondPage';
+import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
 import SidebarLayout from './components/SidebarLayout';
 
 function ProtectedRoute({children, allowedRoles}: {children: React.ReactNode, allowedRoles: string[]}) {
@@ -98,6 +99,7 @@ export default function App() {
             <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/tutors" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
             <Route path="/admin/librarians" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+            <Route path="/admin/categories" element={<ProtectedRoute allowedRoles={['admin', 'librarian']}><AdminCategoriesPage /></ProtectedRoute>} />
             <Route path="/admin/groups" element={<ProtectedRoute allowedRoles={['admin']}><AdminGroupsPage /></ProtectedRoute>} />
             <Route path="/admin/books" element={<ProtectedRoute allowedRoles={['admin']}><BookManagementPage /></ProtectedRoute>} />
             <Route path="/admin/copies" element={<ProtectedRoute allowedRoles={['admin']}><div className="p-8">Admin Nusxalar boshqaruvi</div></ProtectedRoute>} />

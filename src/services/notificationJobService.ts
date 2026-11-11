@@ -13,8 +13,14 @@ export const processLoanNotifications = async (db: Firestore) => {
 
   for (const doc of activeLoans.docs) {
     const loan = doc.data();
-    // Assuming dueAt is a Timestamp in Firestore
-    const dueAt = new Date(loan.dueAt.toDate());
+    // Support both Timestamp objects and ISO strings
+    let dueAt: Date;
+    if (loan.dueAt && typeof loan.dueAt.toDate === 'function') {
+        dueAt = loan.dueAt.toDate();
+    } else {
+        dueAt = new Date(loan.dueAt);
+    }
+    
     const diffTime = dueAt.getTime() - nowTashkent.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     

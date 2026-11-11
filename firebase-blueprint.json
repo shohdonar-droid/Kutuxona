@@ -70,12 +70,33 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "authorIds": { "type": "array", "items": { "type": "string" } },
+        "categoryIds": { "type": "array", "items": { "type": "string" } },
         "isbn": { "type": "string" },
         "isPublished": { "type": "boolean" },
+        "coverUrl": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "pdfStoragePath": { "type": "string" },
+        "views": { "type": "number" },
+        "reads": { "type": "number" },
+        "favorites": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "title", "authorIds"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Book category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "bookCount": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "isActive"]
     },
     "BookCopy": {
       "title": "BookCopy",
@@ -223,6 +244,10 @@
     "/reservations/{reservationId}": {
       "schema": "Reservation",
       "description": "Book reservations"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Book categories"
     },
     "/settings/library": {
       "schema": "LibrarySettings",

@@ -1,27 +1,31 @@
 import {useEffect, useState} from 'react';
 import {getBooks, Book, updateBook, createBook} from '../../services/bookService';
 import {createBookCopies, getBookAvailability} from '../../services/bookCopyService';
+import {getCategories, incrementCategoryBookCount, Category} from '../../services/categoryService';
 import {storage} from '../../firebase';
 import {ref, uploadBytes, getDownloadURL} from 'firebase/storage';
 import PageHeader from '../../components/PageHeader';
 import {Card, Badge, Button} from '../../components/UIComponents';
-import {Plus, BookPlus, Upload, FileText, CheckCircle, XCircle} from 'lucide-react';
+import {Plus, BookPlus, Upload, FileText, CheckCircle, XCircle, Tag} from 'lucide-react';
 
 export default function BookManagementPage() {
   const [books, setBooks] = useState<Book[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '', author: '', isbn: '', subject: '', language: 'O‘zbek', 
-    annotation: '', year: '2024', pages: '', copiesCount: 50
+    annotation: '', year: '2024', pages: '', copiesCount: 50,
+    categoryIds: [] as string[]
   });
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchBooks();
+    getCategories(true).then(setCategories);
   }, []);
 
   const fetchBooks = async () => {
@@ -38,6 +42,11 @@ export default function BookManagementPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.categoryIds.length === 0) {
+        alert("Kamida bitta kategoriya tanlang!");
+        return;
+    }
+
     setSubmitting(true);
     try {
         // 1. Upload files
@@ -66,6 +75,7 @@ export default function BookManagementPage() {
             author: formData.author,
             isbn: formData.isbn,
             subject: formData.subject,
+            categoryIds: formData.categoryIds,
             language: formData.language,
             annotation: formData.annotation,
             year: formData.year,
@@ -84,7 +94,11 @@ export default function BookManagementPage() {
 
         const docRef = await createBook(newBook);
         
-        // 3. Create initial copies
+        // 3. Update category counts
+        const countPromises = formData.categoryIds.map(id => incrementCategoryBookCount(id, 1));
+        await Promise.all(countPromises);
+
+        // 4. Create initial copies
         if (formData.copiesCount > 0) {
             const prefix = formData.title.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'B');
             await createBookCopies(docRef.id, formData.copiesCount, prefix);
@@ -94,7 +108,8 @@ export default function BookManagementPage() {
         setShowForm(false);
         setFormData({
             title: '', author: '', isbn: '', subject: '', language: 'O‘zbek', 
-            annotation: '', year: '2024', pages: '', copiesCount: 50
+            annotation: '', year: '2024', pages: '', copiesCount: 50,
+            categoryIds: []
         });
         setPdfFile(null);
         setCoverFile(null);
@@ -105,6 +120,15 @@ export default function BookManagementPage() {
     } finally {
         setSubmitting(false);
     }
+  };
+
+  const toggleCategory = (id: string) => {
+    setFormData(prev => ({
+        ...prev,
+        categoryIds: prev.categoryIds.includes(id) 
+            ? prev.categoryIds.filter(cid => cid !== id)
+            : [...prev.categoryIds, id]
+    }));
   };
 
   const togglePublished = async (book: Book) => {
@@ -171,6 +195,29 @@ export default function BookManagementPage() {
                     <label className="text-sm font-bold text-gray-700">Nusxalar soni (Jismoniy)</label>
                     <input type="number" required className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl font-bold text-blue-600"
                         value={formData.copiesCount} onChange={e => setFormData({...formData, copiesCount: parseInt(e.target.value) || 0})} />
+                </div>
+
+                <div className="md:col-span-3 space-y-3">
+                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <Tag size={16} className="text-blue-600" /> Kategoriyalar (Kamida bitta)
+                    </label>
+                    <div className="flex flex-wrap gap-2 p-4 bg-gray-50 border border-gray-100 rounded-2xl">
+                        {categories.map(cat => (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => toggleCategory(cat.id)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                                    formData.categoryIds.includes(cat.id)
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20'
+                                    : 'bg-white text-gray-500 border-gray-100 hover:border-blue-200'
+                                }`}
+                            >
+                                {cat.name}
+                            </button>
+                        ))}
+                        {categories.length === 0 && <p className="text-xs text-gray-400 italic">Kategoriyalar yuklanmoqda...</p>}
+                    </div>
                 </div>
                 
                 <div className="md:col-span-3 space-y-2">

@@ -111,6 +111,46 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------------------
+    // NOTIFICATIONS COLLECTION
+    // -------------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.userId || isAdmin() || isLibrarian());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isLibrarian());
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
+    }
+
+    // -------------------------------------------------------------------------
+    // FAVORITES COLLECTION
+    // -------------------------------------------------------------------------
+    match /favorites/{favoriteId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------------------
+    // READING PROGRESS & SESSIONS
+    // -------------------------------------------------------------------------
+    match /readingProgress/{progressId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isTutor());
+      allow create, update: if isSignedIn() && incoming().userId == request.auth.uid;
+    }
+
+    match /readingSessions/{sessionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin() || isTutor());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+    }
+
+    // -------------------------------------------------------------------------
+    // CATEGORIES COLLECTION
+    // -------------------------------------------------------------------------
+    match /categories/{categoryId} {
+      allow read: if isSignedIn() || (resource.data.isActive == true);
+      allow create, update: if isAdmin() || isLibrarian();
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------------------
     // SETTINGS COLLECTION
     // -------------------------------------------------------------------------
     match /settings/library {

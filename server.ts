@@ -10,9 +10,7 @@ async function startServer() {
     app.use(express.json());
 
     // Initialize Admin SDK
-    initializeApp({
-        projectId: 'probable-wall-007pf'
-    });
+    initializeApp();
     const db = getFirestore('ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d');
 
     // Schedule notification job every 15 minutes

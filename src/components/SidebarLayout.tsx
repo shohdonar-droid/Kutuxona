@@ -3,14 +3,17 @@ import {useState} from 'react';
 import {
   LayoutDashboard, Users, BookOpen, BookCheck, ShieldAlert, BarChart3, Settings, LogOut,
   Home, Book, Bookmark, History, Bell, User, BookOpenText, Package, QrCode, ArrowLeftRight,
-  PlusCircle, AlertTriangle, FileText, GraduationCap, Building2, ClipboardList, Heart
+  PlusCircle, AlertTriangle, FileText, GraduationCap, Building2, ClipboardList, Heart, Tag, Search
 } from 'lucide-react';
 import {useAuth} from '../context/AuthContext';
+import {useNavigate} from 'react-router-dom';
 import {auth} from '../firebase';
 
 export default function SidebarLayout() {
   const {profile} = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isUserRoute = location.pathname.includes('/admin/librarians') || 
                      location.pathname.includes('/admin/tutors') || 
@@ -39,6 +42,7 @@ export default function SidebarLayout() {
         
         { section: 'KUTUBXONA' },
         { name: 'Kitoblar', path: '/admin/books', icon: BookOpen },
+        { name: 'Kategoriyalar', path: '/admin/categories', icon: Tag },
         { name: 'Fizik nusxalar', path: '/admin/copies', icon: Package },
         { name: 'Berilganlar', path: '/admin/loans', icon: ArrowLeftRight },
         { name: 'Bronlar', path: '/admin/reservations', icon: BookCheck },
@@ -59,6 +63,7 @@ export default function SidebarLayout() {
         
         { section: 'FOND' },
         { name: 'Kitoblar fondi', path: '/librarian/books', icon: BookOpen },
+        { name: 'Kategoriyalar', path: '/admin/categories', icon: Tag },
         { name: 'Kitob nusxalari', path: '/librarian/copies', icon: Package },
         { name: 'Kitob qo‘shish', path: '/admin/books', icon: PlusCircle },
         
@@ -200,13 +205,32 @@ export default function SidebarLayout() {
       
       <main className="flex-1 overflow-y-auto">
         <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
-            <div className="text-sm text-gray-500 font-medium">
-                {location.pathname.split('/').filter(Boolean).map((p, i) => (
-                    <span key={p}>
-                        <span className="capitalize">{p}</span>
-                        {i < location.pathname.split('/').filter(Boolean).length - 1 && <span className="mx-2 text-gray-300">/</span>}
-                    </span>
-                ))}
+            <div className="flex items-center gap-8">
+                <div className="text-sm text-gray-500 font-medium hidden lg:block">
+                    {location.pathname.split('/').filter(Boolean).map((p, i) => (
+                        <span key={p}>
+                            <span className="capitalize">{p}</span>
+                            {i < location.pathname.split('/').filter(Boolean).length - 1 && <span className="mx-2 text-gray-300">/</span>}
+                        </span>
+                    ))}
+                </div>
+                
+                <div className="relative group min-w-[300px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                    <input 
+                        type="text"
+                        placeholder="Kitob qidirish..."
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-blue-200 outline-none transition-all text-sm font-medium"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                navigate(`/books?q=${encodeURIComponent(searchQuery)}`);
+                                setSearchQuery('');
+                            }
+                        }}
+                    />
+                </div>
             </div>
             <div className="flex items-center space-x-4">
                 <div className="flex flex-col text-right mr-2">
