@@ -88,19 +88,32 @@ export const getUsersByRole = async (role: string) => {
 };
 
 export const adminCreateUser = async (data: any) => {
-    const response = await fetch('/api/admin/users/create', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'TDTU_ADMIN_SECRET' // In real app, get from env or secure context
-        },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Failed to create user');
+    try {
+        const response = await fetch('/api/admin/users/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'TDTU_ADMIN_SECRET'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!response.ok) {
+            if (contentType && contentType.includes('application/json')) {
+                const err = await response.json();
+                throw new Error(err.error || 'Foydalanuvchi yaratishda xatolik yuz berdi.');
+            } else {
+                const text = await response.text();
+                console.error("Non-JSON error response:", text);
+                throw new Error(`Server xatosi: ${response.status}. API manzili noto'g'ri bo'lishi mumkin.`);
+            }
+        }
+        return await response.json();
+    } catch (error: any) {
+        console.error("adminCreateUser error:", error);
+        throw error;
     }
-    return await response.json();
 };
 
 export const adminResetPassword = async (uid: string, password: string) => {

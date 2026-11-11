@@ -1,15 +1,17 @@
 import {useEffect, useState} from 'react';
 import {getUsersCount, getRoleCounts} from '../../services/userService';
-import {getBooksCount} from '../../services/bookService';
+import {getBooksCount, getBooks, getBooksByCategoryCounts} from '../../services/bookService';
 import {getActiveLoansCount, getLoansWithDateFilter} from '../../services/loanService';
-import {Bar} from 'react-chartjs-2';
-import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend} from 'chart.js';
+import {getTotalFavoritesCount} from '../../services/favoriteService';
+import {getTotalReadsCount, getTotalReadingSessionsCount} from '../../services/readingService';
+import {Bar, Pie} from 'react-chartjs-2';
+import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement} from 'chart.js';
 import {exportToCSV} from '../../utils/csvExport';
 import PageHeader from '../../components/PageHeader';
 import {Card, Badge, Button} from '../../components/UIComponents';
-import {Users, BookOpen, Clock, Download, Calendar, TrendingUp, ArrowUpRight, AlertCircle} from 'lucide-react';
+import {Users, BookOpen, Clock, Download, Calendar, TrendingUp, ArrowUpRight, AlertCircle, Heart, Eye, BookText, PieChart} from 'lucide-react';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState<any>(null);
@@ -24,11 +26,20 @@ export default function AdminAnalyticsPage() {
   const fetchData = async () => {
     try {
         setLoading(true);
-        const [users, roleCounts, books, activeLoans] = await Promise.all([
+        const [
+            users, roleCounts, booksCount, activeLoans, 
+            totalFavorites, totalReads, totalSessions, 
+            categoryCounts, booksList
+        ] = await Promise.all([
             getUsersCount(),
             getRoleCounts(),
             getBooksCount(),
-            getActiveLoansCount()
+            getActiveLoansCount(),
+            getTotalFavoritesCount(),
+            getTotalReadsCount(),
+            getTotalReadingSessionsCount(),
+            getBooksByCategoryCounts(),
+            getBooks(false)
         ]);
         
         const endDate = new Date();
@@ -38,8 +49,13 @@ export default function AdminAnalyticsPage() {
         
         const loans = await getLoansWithDateFilter(startDate, endDate);
         
-        setStats({users, roleCounts, books, activeLoans, loans});
+        setStats({
+            users, roleCounts, booksCount, activeLoans, 
+            totalFavorites, totalReads, totalSessions,
+            categoryCounts, booksList, loans
+        });
     } catch (e) {
+        console.error(e);
         setError('Ma\'lumotlarni yuklashda xatolik yuz berdi.');
     } finally {
         setLoading(false);
@@ -49,14 +65,42 @@ export default function AdminAnalyticsPage() {
   if (loading) return <div className="p-8 text-center text-blue-900 font-bold">Analitika yuklanmoqda...</div>;
   if (error) return <div className="p-8 text-red-600 font-bold">{error}</div>;
 
-  const chartData = {
-    labels: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'],
+  const categoryData = {
+    labels: Object.keys(stats.categoryCounts),
     datasets: [{
-        label: 'Kreditlar', 
-        data: [12, 18, 9, 15, 20, 5, 2], 
-        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-        borderRadius: 8,
+        label: 'Kitoblar soni',
+        data: Object.values(stats.categoryCounts),
+        backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(139, 92, 246, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+            'rgba(239, 68, 68, 0.8)',
+            'rgba(107, 114, 128, 0.8)',
+        ],
+        borderWidth: 0,
     }]
+  };
+
+  // Sort books by reads for popular books chart
+  const popularBooks = [...stats.booksList].sort((a, b) => (b.reads || 0) - (a.reads || 0)).slice(0, 5);
+
+  const popularData = {
+    labels: popularBooks.map(b => b.title.substring(0, 15) + '...'),
+    datasets: [
+        {
+            label: 'O\'qilgan',
+            data: popularBooks.map(b => b.reads || 0),
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderRadius: 6,
+        },
+        {
+            label: 'Sevimli',
+            data: popularBooks.map(b => b.favorites || 0),
+            backgroundColor: 'rgba(236, 72, 153, 0.8)',
+            borderRadius: 6,
+        }
+    ]
   };
 
   return (
@@ -82,6 +126,7 @@ export default function AdminAnalyticsPage() {
         }
       />
       
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="flex items-center gap-6 p-6">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
@@ -90,35 +135,16 @@ export default function AdminAnalyticsPage() {
             <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Foydalanuvchilar</p>
                 <p className="text-3xl font-black text-gray-900">{stats.users}</p>
-                <div className="flex items-center gap-1 text-[10px] text-green-600 font-bold mt-1">
-                    <ArrowUpRight size={12} /> +12%
-                </div>
             </div>
         </Card>
         
         <Card className="flex items-center gap-6 p-6">
             <div className="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 shrink-0">
-                <TrendingUp size={28} />
-            </div>
-            <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Talabalar</p>
-                <p className="text-3xl font-black text-gray-900">{stats.roleCounts.student}</p>
-                <div className="flex items-center gap-1 text-[10px] text-green-600 font-bold mt-1">
-                    <ArrowUpRight size={12} /> +5%
-                </div>
-            </div>
-        </Card>
-
-        <Card className="flex items-center gap-6 p-6">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
                 <BookOpen size={28} />
             </div>
             <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Kitoblar fondi</p>
-                <p className="text-3xl font-black text-gray-900">{stats.books}</p>
-                <div className="flex items-center gap-1 text-[10px] text-purple-600 font-bold mt-1">
-                    <Badge variant="blue" className="text-[8px] py-0">Yangilandi</Badge>
-                </div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Jami Kitoblar</p>
+                <p className="text-3xl font-black text-gray-900">{stats.booksCount}</p>
             </div>
         </Card>
 
@@ -127,63 +153,118 @@ export default function AdminAnalyticsPage() {
                 <Clock size={28} />
             </div>
             <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Faol kreditlar</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Faol Kreditlar</p>
                 <p className="text-3xl font-black text-gray-900">{stats.activeLoans}</p>
-                <div className="flex items-center gap-1 text-[10px] text-orange-600 font-bold mt-1">
-                    <AlertCircle size={12} className="hidden" /> Hozirda
-                </div>
+            </div>
+        </Card>
+
+        <Card className="flex items-center gap-6 p-6">
+            <div className="w-14 h-14 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 shrink-0">
+                <Heart size={28} />
+            </div>
+            <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Sevimli Kitoblar</p>
+                <p className="text-3xl font-black text-gray-900">{stats.totalFavorites}</p>
             </div>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2">
-            <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                    <Calendar className="text-blue-600" /> Haftalik faollik
-                </h3>
-            </div>
-            <div className="h-[400px] flex items-end">
-                <Bar 
-                    data={chartData} 
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="p-6 bg-indigo-50 border-indigo-100">
+              <div className="flex items-center gap-4">
+                  <div className="p-3 bg-indigo-600 text-white rounded-xl"><BookText size={20} /></div>
+                  <div>
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Jami O'qishlar</p>
+                      <p className="text-2xl font-black text-indigo-900">{stats.totalReads}</p>
+                  </div>
+              </div>
+          </Card>
+          <Card className="p-6 bg-emerald-50 border-emerald-100">
+              <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-600 text-white rounded-xl"><TrendingUp size={20} /></div>
+                  <div>
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">O'qish seanslari</p>
+                      <p className="text-2xl font-black text-emerald-900">{stats.totalSessions}</p>
+                  </div>
+              </div>
+          </Card>
+          <Card className="p-6 bg-amber-50 border-amber-100">
+              <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-600 text-white rounded-xl"><Eye size={20} /></div>
+                  <div>
+                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">O'rtacha faollik</p>
+                      <p className="text-2xl font-black text-amber-900">{Math.round(stats.totalReads / (stats.users || 1) * 10) / 10} kitob/foyd.</p>
+                  </div>
+              </div>
+          </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-8">
+            <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-2">
+                <PieChart className="text-blue-600" /> Yo'nalishlar (Kategoriyalar)
+            </h3>
+            <div className="h-[300px] flex justify-center">
+                <Pie 
+                    data={categoryData}
                     options={{
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { 
-                            y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-                            x: { grid: { display: false } }
-                        }
-                    }} 
+                        plugins: { legend: { position: 'right' } }
+                    }}
                 />
             </div>
         </Card>
         
-        <Card>
+        <Card className="p-8">
             <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center gap-2">
-                <Users className="text-blue-600" /> Rollar taqsimoti
+                <TrendingUp className="text-blue-600" /> Eng ommabop kitoblar
             </h3>
-            <div className="space-y-6">
-                {Object.entries(stats.roleCounts).map(([role, count]: [any, any]) => (
-                    <div key={role} className="space-y-2">
-                        <div className="flex justify-between text-sm font-bold">
-                            <span className="capitalize text-gray-600">{role}</span>
-                            <span className="text-gray-900">{count}</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                                className={`h-full rounded-full ${
-                                    role === 'student' ? 'bg-green-500' : 
-                                    role === 'librarian' ? 'bg-blue-500' : 
-                                    role === 'tutor' ? 'bg-indigo-500' : 'bg-red-500'
-                                }`} 
-                                style={{width: `${(count / stats.users) * 100}%`}}
-                            />
-                        </div>
-                    </div>
-                ))}
+            <div className="h-[300px]">
+                <Bar 
+                    data={popularData}
+                    options={{
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { x: { beginAtZero: true } }
+                    }}
+                />
             </div>
         </Card>
       </div>
+
+      {/* Detailed Book Stats Table */}
+      <Card className="p-0 overflow-hidden">
+          <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+              <h3 className="text-lg font-black text-gray-900">Kitoblar faolligi (Barcha kitoblar)</h3>
+              <Badge variant="blue">{stats.booksList.length} ta kitob</Badge>
+          </div>
+          <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                  <thead className="bg-gray-50 text-[10px] uppercase font-black text-gray-400 tracking-widest">
+                      <tr>
+                          <th className="px-6 py-4">Kitob nomi</th>
+                          <th className="px-6 py-4 text-center">Yo'nalish</th>
+                          <th className="px-6 py-4 text-center">Ko'rishlar</th>
+                          <th className="px-6 py-4 text-center">O'qilgan</th>
+                          <th className="px-6 py-4 text-center">Sevimli</th>
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                      {stats.booksList.slice(0, 10).map((book: any) => (
+                          <tr key={book.id} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-6 py-4 font-bold text-gray-900 text-sm">{book.title}</td>
+                              <td className="px-6 py-4 text-center text-xs text-gray-500 font-medium">{book.subject || 'Boshqa'}</td>
+                              <td className="px-6 py-4 text-center font-mono text-sm text-blue-600 font-bold">{book.views || 0}</td>
+                              <td className="px-6 py-4 text-center font-mono text-sm text-green-600 font-bold">{book.reads || 0}</td>
+                              <td className="px-6 py-4 text-center font-mono text-sm text-pink-600 font-bold">{book.favorites || 0}</td>
+                          </tr>
+                      ))}
+                  </tbody>
+              </table>
+          </div>
+      </Card>
     </div>
   );
 }

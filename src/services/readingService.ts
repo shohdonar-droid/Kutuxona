@@ -1,5 +1,6 @@
-import {doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs} from 'firebase/firestore';
+import {doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, getCountFromServer} from 'firebase/firestore';
 import {db} from '../firebase';
+import {incrementBookReads} from './bookService';
 
 export const MIN_READING_SECONDS = 30;
 export const MIN_PROGRESS_PERCENT = 5;
@@ -44,7 +45,24 @@ export const updateReadingProgress = async (userId: string, bookId: string, data
   const existing = await getReadingProgress(userId, bookId);
   if (existing) {
     await updateDoc(doc(db, 'readingProgress', existing.id), {...data, lastReadAt: new Date().toISOString()});
+    if (data.status === 'COMPLETED' && existing.status !== 'COMPLETED') {
+        await incrementBookReads(bookId);
+    }
   } else {
     await addDoc(collection(db, 'readingProgress'), {userId, bookId, ...data, lastReadAt: new Date().toISOString()});
+    if (data.status === 'COMPLETED') {
+        await incrementBookReads(bookId);
+    }
   }
 };
+
+export const getTotalReadsCount = async () => {
+    const snapshot = await getCountFromServer(collection(db, 'readingProgress'));
+    return snapshot.data().count;
+};
+
+export const getTotalReadingSessionsCount = async () => {
+    const snapshot = await getCountFromServer(collection(db, 'readingSessions'));
+    return snapshot.data().count;
+};
+

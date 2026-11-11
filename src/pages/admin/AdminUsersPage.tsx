@@ -40,7 +40,7 @@ export default function AdminUsersPage() {
       studentId: '', 
       groupId: '',
       course: '',
-      direction: ''
+      directionId: ''
   });
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function AdminUsersPage() {
 
         await adminCreateUser(payload);
         setShowForm(false);
-        setFormData({loginId: '', password: '', fullName: '', phone: '', studentId: '', groupId: '', course: '', direction: ''});
+        setFormData({loginId: '', password: '', fullName: '', phone: '', studentId: '', groupId: '', course: '', directionId: ''});
         fetchUsersByTab();
         alert("Foydalanuvchi muvaffaqiyatli yaratildi!");
     } catch (err: any) {
@@ -334,8 +334,8 @@ export default function AdminUsersPage() {
                             <input 
                                 type="text" required
                                 className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                                value={formData.direction}
-                                onChange={e => setFormData({...formData, direction: e.target.value})}
+                                value={formData.directionId}
+                                onChange={e => setFormData({...formData, directionId: e.target.value})}
                                 placeholder="Masalan: Tibbiy pedagogika"
                             />
                         </div>
@@ -393,27 +393,30 @@ export default function AdminUsersPage() {
       <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
               <table className="w-full text-left">
-                  <thead className="bg-gray-50 border-b border-gray-100 text-xs uppercase font-bold text-gray-400 tracking-wider">
+                  <thead className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase font-bold text-gray-400 tracking-wider">
                       <tr>
-                          <th className="px-6 py-4">Foydalanuvchi</th>
+                          <th className="px-6 py-4">F.I.Sh. (FISH)</th>
                           {activeTab === 'students' ? (
                               <>
-                                  <th className="px-6 py-4">Kurs / Yo'nalish</th>
-                                  <th className="px-6 py-4">Guruh</th>
-                                  <th className="px-6 py-4">Talaba ID</th>
+                                  <th className="px-6 py-4 text-center">Kurs</th>
+                                  <th className="px-6 py-4">Yo'nalish</th>
+                                  <th className="px-6 py-4 text-center">Guruh</th>
+                                  <th className="px-6 py-4">Talaba ID (Login)</th>
+                                  <th className="px-6 py-4">Parol</th>
                               </>
                           ) : (
-                              <th className="px-6 py-4">Kontakt</th>
+                              <th className="px-6 py-4">Kontakt / Email</th>
                           )}
+                          <th className="px-6 py-4 text-center">Tel raqami</th>
                           <th className="px-6 py-4 text-center">Status</th>
                           <th className="px-6 py-4 text-right">Amallar</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                       {loading ? (
-                          <tr><td colSpan={activeTab === 'students' ? 6 : 4} className="p-10 text-center text-gray-400 italic font-medium animate-pulse">Yuklanmoqda...</td></tr>
+                          <tr><td colSpan={activeTab === 'students' ? 9 : 5} className="p-10 text-center text-gray-400 italic font-medium animate-pulse">Yuklanmoqda...</td></tr>
                       ) : filteredUsers.length === 0 ? (
-                          <tr><td colSpan={activeTab === 'students' ? 6 : 4} className="p-20 text-center text-gray-400 italic flex flex-col items-center">
+                          <tr><td colSpan={activeTab === 'students' ? 9 : 5} className="p-20 text-center text-gray-400 italic flex flex-col items-center">
                               <Users size={48} className="mb-4 opacity-20" />
                               Foydalanuvchilar topilmadi.
                           </td></tr>
@@ -421,7 +424,7 @@ export default function AdminUsersPage() {
                           <tr key={user.uid} className="hover:bg-gray-50/50 transition-colors group">
                               <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
-                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold border ${
                                           user.role === 'admin' ? 'bg-red-50 text-red-700 border-red-100' : 
                                           user.role === 'librarian' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                           user.role === 'tutor' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
@@ -429,35 +432,37 @@ export default function AdminUsersPage() {
                                       }`}>
                                           {user.fullName.charAt(0)}
                                       </div>
-                                      <div>
-                                          <p className="text-sm font-bold text-gray-900">{user.fullName}</p>
-                                          <div className="flex items-center gap-2 mt-1">
-                                              <Smartphone size={10} className="text-gray-300" />
-                                              <p className="text-[10px] text-gray-400 font-medium">{user.phone || 'Tel kiritilmagan'}</p>
-                                          </div>
-                                      </div>
+                                      <p className="text-sm font-bold text-gray-900 truncate max-w-[180px]" title={user.fullName}>{user.fullName}</p>
                                   </div>
                               </td>
                               {activeTab === 'students' ? (
                                   <>
-                                      <td className="px-6 py-4">
-                                          <div className="flex flex-col">
-                                              <span className="text-xs font-bold text-gray-700">{user.course}-kurs</span>
-                                              <span className="text-[10px] text-gray-400 font-medium truncate max-w-[150px]">{user.directionId || 'Yo\'nalish'}</span>
-                                          </div>
+                                      <td className="px-6 py-4 text-center">
+                                          <span className="text-xs font-bold text-gray-700">{user.course}</span>
                                       </td>
                                       <td className="px-6 py-4">
+                                          <span className="text-[10px] text-gray-400 font-medium truncate max-w-[120px]" title={user.directionId}>{user.directionId || 'Yo\'nalish'}</span>
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
                                           <Badge variant="blue">{user.groupId || '-'}</Badge>
                                       </td>
-                                      <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                                      <td className="px-6 py-4 font-mono text-[11px] text-gray-500">
                                           {user.studentId || '-'}
+                                      </td>
+                                      <td className="px-6 py-4 font-mono text-[11px] text-gray-400">
+                                          {user.initialPassword || '••••••'}
                                       </td>
                                   </>
                               ) : (
                                   <td className="px-6 py-4">
-                                      <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium"><Mail size={12} className="text-gray-300" /> {user.email}</div>
+                                      <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium truncate max-w-[150px]" title={user.email}>
+                                          <Mail size={12} className="text-gray-300 shrink-0" /> {user.email}
+                                      </div>
                                   </td>
                               )}
+                              <td className="px-6 py-4 text-center text-[11px] text-gray-600">
+                                  {user.phone || '-'}
+                              </td>
                               <td className="px-6 py-4 text-center">
                                   <Badge variant={user.isActive ? 'green' : 'red'}>{user.isActive ? 'Faol' : 'Nofaol'}</Badge>
                               </td>

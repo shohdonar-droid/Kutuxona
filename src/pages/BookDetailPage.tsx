@@ -1,7 +1,8 @@
 import {useEffect, useState} from 'react';
 import {useParams, Link} from 'react-router-dom';
-import {getBook, Book} from '../services/bookService';
+import {getBook, Book, incrementBookViews} from '../services/bookService';
 import {getBookAvailability} from '../services/bookCopyService';
+import {addFavorite, removeFavorite, getUserFavorites} from '../services/favoriteService';
 import {useAuth} from '../context/AuthContext';
 import {Card, Badge, Button} from '../components/UIComponents';
 import {BookOpen, Heart, Bookmark, Info, AlertCircle, ChevronLeft} from 'lucide-react';
@@ -12,6 +13,8 @@ export default function BookDetailPage() {
   const [loading, setLoading] = useState(true);
   const {user, profile} = useAuth();
   const [availability, setAvailability] = useState<{available: number, total: number} | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteId, setFavoriteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -20,8 +23,41 @@ export default function BookDetailPage() {
         setLoading(false);
       });
       getBookAvailability(id).then(setAvailability);
+      incrementBookViews(id);
+      
+      if (user) {
+          getUserFavorites(user.uid).then(favs => {
+              const found = favs.find(f => f.bookId === id);
+              if (found) {
+                  setIsFavorite(true);
+                  setFavoriteId(found.id);
+              }
+          });
+      }
     }
-  }, [id]);
+  }, [id, user]);
+
+  const toggleFavorite = async () => {
+      if (!user || !id) return;
+      try {
+          if (isFavorite && favoriteId) {
+              await removeFavorite(favoriteId);
+              setIsFavorite(false);
+              setFavoriteId(null);
+          } else {
+              await addFavorite(user.uid, id);
+              // Refresh to get the new favorite ID
+              const favs = await getUserFavorites(user.uid);
+              const found = favs.find(f => f.bookId === id);
+              if (found) {
+                  setFavoriteId(found.id);
+              }
+              setIsFavorite(true);
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
 
   if (loading) return <div className="p-8 text-center text-blue-900 font-bold">Yuklanmoqda...</div>;
   if (!book) return <div className="p-8 text-center text-red-600 font-bold">Kitob topilmadi</div>;
@@ -50,10 +86,15 @@ export default function BookDetailPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-                <Button variant="secondary" className="flex-1 justify-center py-3">
-                    <Heart size={18} className="text-red-500" /> Sevimli
+                <Button 
+                    variant={isFavorite ? 'primary' : 'secondary'} 
+                    className={`flex-1 justify-center py-3 ${isFavorite ? 'bg-pink-600 hover:bg-pink-700' : ''}`}
+                    onClick={toggleFavorite}
+                    disabled={!user}
+                >
+                    <Heart size={18} className={isFavorite ? 'fill-current' : 'text-red-500'} /> Sevimli
                 </Button>
-                <Button variant="secondary" className="flex-1 justify-center py-3">
+                <Button variant="secondary" className="flex-1 justify-center py-3" disabled={!user}>
                     <Bookmark size={18} className="text-blue-500" /> Saqlash
                 </Button>
             </div>

@@ -79,3 +79,36 @@ export const updateBook = async (id: string, book: Partial<Book>) => {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }
 };
+
+export const incrementBookViews = async (id: string) => {
+    const {increment} = await import('firebase/firestore');
+    await updateBook(id, { views: increment(1) as any });
+};
+
+export const incrementBookReads = async (id: string) => {
+    const {increment} = await import('firebase/firestore');
+    await updateBook(id, { reads: increment(1) as any });
+};
+
+export const incrementBookFavorites = async (id: string, amount: number = 1) => {
+    const {increment} = await import('firebase/firestore');
+    await updateBook(id, { favorites: increment(amount) as any });
+};
+
+export const getBooksByCategoryCounts = async () => {
+    const path = 'books';
+    try {
+        const snapshot = await getDocs(collection(db, 'books'));
+        const counts: Record<string, number> = {};
+        snapshot.forEach(doc => {
+            const book = doc.data() as Book;
+            const cat = book.subject || "Boshqa";
+            counts[cat] = (counts[cat] || 0) + 1;
+        });
+        return counts;
+    } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, path);
+        return {};
+    }
+};
+

@@ -10,13 +10,18 @@
         "role": { "type": "string", "enum": ["student", "librarian", "tutor", "admin"] },
         "fullName": { "type": "string" },
         "phone": { "type": "string" },
+        "studentId": { "type": "string" },
+        "course": { "type": "number" },
+        "directionId": { "type": "string" },
+        "groupId": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "initialPassword": { "type": "string" },
         "photoURL": { "type": "string" },
         "groupIds": { "type": "array", "items": { "type": "string" } },
-        "isActive": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["uid", "email", "role", "isActive"]
     },
     "Student": {
       "title": "Student",

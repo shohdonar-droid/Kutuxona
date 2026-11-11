@@ -2,7 +2,7 @@ import express from 'express';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import cron from 'node-cron';
-import { processLoanNotifications } from './src/services/notificationJobService.js';
+import { processLoanNotifications } from './src/services/notificationJobService.ts';
 import { createServer as createViteServer } from 'vite';
 
 async function startServer() {
@@ -27,27 +27,36 @@ async function startServer() {
     });
 
     app.post('/api/admin/notifications/process-loans', async (req, res) => {
-        if (req.headers['authorization'] !== process.env.ADMIN_SECRET) {
-            return res.status(401).send('Unauthorized');
+        if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
         try {
             await processLoanNotifications(db);
-            res.status(200).send('Notifications processed');
-        } catch (e) {
-            res.status(500).send(e);
+            res.status(200).json({ success: true, message: 'Notifications processed' });
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
         }
     });
 
     app.post('/api/admin/users/create', async (req, res) => {
-        // Simplified auth check for this environment or use a fixed secret
-        if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
-            return res.status(401).send('Unauthorized');
-        }
-        const { email, password, fullName, role, ...extra } = req.body;
-        const { getAuth } = await import('firebase-admin/auth');
-        const auth = getAuth();
-        
         try {
+            // Check auth
+            const authHeader = req.headers['authorization'];
+            if (authHeader !== process.env.ADMIN_SECRET && authHeader !== 'TDTU_ADMIN_SECRET') {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            const { email, password, fullName, role, ...extra } = req.body;
+            
+            if (!email || !password || !fullName || !role) {
+                return res.status(400).json({ error: 'Required fields missing: email, password, fullName, role' });
+            }
+
+            const { getAuth } = await import('firebase-admin/auth');
+            const auth = getAuth();
+            
+            console.log(`Attempting to create user: ${email} with role: ${role}`);
+
             const userRecord = await auth.createUser({
                 email,
                 password,
@@ -67,16 +76,21 @@ async function startServer() {
             };
             
             await db.collection('users').doc(userRecord.uid).set(profile);
+            console.log(`User created successfully: ${userRecord.uid}`);
             res.status(200).json({ uid: userRecord.uid });
         } catch (e: any) {
-            console.error("User creation error:", e);
-            res.status(500).json({ error: e.message });
+            console.error("User creation error detail:", e);
+            const errorMessage = e.message || String(e);
+            res.status(500).json({ 
+                error: errorMessage,
+                code: e.code || 'unknown'
+            });
         }
     });
 
     app.post('/api/admin/users/reset-password', async (req, res) => {
         if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
-            return res.status(401).send('Unauthorized');
+            return res.status(401).json({ error: 'Unauthorized' });
         }
         const { uid, password } = req.body;
         const { getAuth } = await import('firebase-admin/auth');
@@ -102,7 +116,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
 
-    app.listen(process.env.PORT || 3000, () => console.log('Server running on port', process.env.PORT || 3000));
+    const port = 3000;
+    app.listen(port, () => console.log(`Server running on port ${port}`));
 }
 
 startServer();
