@@ -78,18 +78,35 @@ export const getBookCopiesCount = async (bookId: string) => {
 };
 
 export const createBookCopies = async (bookId: string, count: number, prefix: string) => {
-    const promises = [];
-    for (let i = 1; i <= count; i++) {
-        const inventoryId = `${prefix}-${String(i).padStart(3, '0')}`;
-        promises.push(addDoc(collection(db, 'bookCopies'), {
-            bookId,
-            inventoryId,
-            barcode: inventoryId,
-            qrCode: inventoryId,
-            status: 'AVAILABLE'
-        }));
+    if (count <= 0) return [];
+    const { writeBatch } = await import('firebase/firestore');
+    const cleanPrefix = (prefix || 'BK').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) || 'BK';
+    
+    // Batch writes into chunks of 400 (Firestore limit is 500 per batch)
+    const BATCH_SIZE = 400;
+    const totalBatches = Math.ceil(count / BATCH_SIZE);
+    let created = 0;
+
+    for (let b = 0; b < totalBatches; b++) {
+        const batch = writeBatch(db);
+        const batchCount = Math.min(BATCH_SIZE, count - created);
+        
+        for (let i = 1; i <= batchCount; i++) {
+            const index = created + i;
+            const inventoryId = `${cleanPrefix}-${String(index).padStart(4, '0')}`;
+            const copyDocRef = doc(collection(db, 'bookCopies'));
+            batch.set(copyDocRef, {
+                bookId,
+                inventoryId,
+                barcode: inventoryId,
+                qrCode: inventoryId,
+                status: 'AVAILABLE'
+            });
+        }
+        await batch.commit();
+        created += batchCount;
     }
-    return await Promise.all(promises);
+    return created;
 };
 
 export const getBookAvailability = async (bookId: string) => {

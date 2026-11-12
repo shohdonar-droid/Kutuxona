@@ -13,10 +13,13 @@ export default function AdminCategoriesPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    icon: '📚',
     isActive: true
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const availableIcons = ['📚', '📝', '🔬', '📊', '📰', '🎭', '💊', '🩺', '🧬', '💻', '🌍', '📐', '🧠', '⚖️'];
 
   useEffect(() => {
     fetchCategories();
@@ -25,7 +28,8 @@ export default function AdminCategoriesPage() {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const data = await getCategories();
+      const { seedDefaultCategoriesIfEmpty, getCategories } = await import('../../services/categoryService');
+      const data = await seedDefaultCategoriesIfEmpty();
       setCategories(data);
     } catch (err) {
       console.error(err);
@@ -44,7 +48,7 @@ export default function AdminCategoriesPage() {
             createdAt: new Date().toISOString()
         });
         setShowForm(false);
-        setFormData({ name: '', description: '', isActive: true });
+        setFormData({ name: '', description: '', icon: '📚', isActive: true });
         fetchCategories();
     } catch (err: any) {
         alert("Xatolik: " + err.message);
@@ -90,8 +94,26 @@ export default function AdminCategoriesPage() {
                         className="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         value={formData.name}
                         onChange={e => setFormData({...formData, name: e.target.value})}
-                        placeholder="Masalan: Tibbiyot adabiyotlari"
+                        placeholder="Masalan: Darsliklar yoki Tibbiyot adabiyotlari"
                     />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-700">Ikonka (Belgi)</label>
+                    <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                        {availableIcons.map(ic => (
+                            <button
+                                key={ic}
+                                type="button"
+                                onClick={() => setFormData({...formData, icon: ic})}
+                                className={`w-10 h-10 rounded-lg text-lg flex items-center justify-center transition-all ${
+                                    formData.icon === ic ? 'bg-blue-600 shadow-md scale-110' : 'hover:bg-white'
+                                }`}
+                            >
+                                {ic}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -130,8 +152,8 @@ export default function AdminCategoriesPage() {
           ) : categories.map(category => (
               <Card key={category.id} className="relative group">
                   <div className="flex justify-between items-start mb-4">
-                      <div className={`p-3 rounded-2xl ${category.isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-400'}`}>
-                          <Tag size={24} />
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${category.isActive ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-400'}`}>
+                          {category.icon || <Tag size={24} />}
                       </div>
                       <Badge variant={category.isActive ? 'green' : 'gray'}>
                           {category.isActive ? 'Faol' : 'Nofaol'}

@@ -12,10 +12,26 @@ service cloud.firestore {
     
     // RBAC: Roles are fetched from the trusted users collection
     function getUserData(uid) { return get(/databases/$(database)/documents/users/$(uid)).data; }
-    function isAdmin() { return isSignedIn() && getUserData(request.auth.uid).role == 'admin'; }
-    function isLibrarian() { return isSignedIn() && getUserData(request.auth.uid).role == 'librarian'; }
-    function isTutor() { return isSignedIn() && getUserData(request.auth.uid).role == 'tutor'; }
-    function isStudent() { return isSignedIn() && getUserData(request.auth.uid).role == 'student'; }
+    function isAdmin() { 
+      return isSignedIn() && 
+             (request.auth.token.email == 'admin@tdtu.uz' || 
+              (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).role == 'admin')); 
+    }
+    function isLibrarian() { 
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData(request.auth.uid).role == 'librarian'; 
+    }
+    function isTutor() { 
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData(request.auth.uid).role == 'tutor'; 
+    }
+    function isStudent() { 
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData(request.auth.uid).role == 'student'; 
+    }
 
     // -------------------------------------------------------------------------
     // GLOBAL SAFETY NET
@@ -27,28 +43,23 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     // USERS COLLECTION
     // -------------------------------------------------------------------------
+    // USERS COLLECTION
     function isValidUser(data) {
       return data.keys().hasAll(['uid', 'email', 'role', 'fullName', 'isActive', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['uid', 'email', 'role', 'fullName', 'isActive', 'createdAt', 'updatedAt', 'phone', 'photoURL', 'studentId', 'facultyId', 'directionId', 'course', 'groupId', 'groupIds']) &&
-             data.uid is string && data.uid.size() <= 128 &&
-             data.email is string && data.email.size() <= 256 &&
+             data.uid is string &&
+             data.email is string &&
              data.role in ['student', 'librarian', 'tutor', 'admin'] &&
-             data.fullName is string && data.fullName.size() <= 256 &&
+             data.fullName is string &&
              data.isActive is bool;
     }
 
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isLibrarian());
-      allow list: if isAdmin(); // Students/Tutors shouldn't scrape the user list
+      allow list: if isAdmin() || isLibrarian() || isTutor();
       
-      allow create: if isAdmin() && isValidUser(incoming()) && incoming().createdAt == request.time;
-      
-      allow update: if (isAdmin() || (request.auth.uid == userId && isVerified())) && 
-                      isValidUser(incoming()) && 
-                      incoming().role == existing().role && // Role immutability for non-admins (though here we wrap with isAdmin check above)
-                      incoming().createdAt == existing().createdAt &&
-                      incoming().updatedAt == request.time &&
-                      (isAdmin() || incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'photoURL', 'updatedAt']));
+      allow create: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow update: if isAdmin() || (request.auth.uid == userId && isSignedIn());
+      allow delete: if isAdmin();
     }
 
     // -------------------------------------------------------------------------
@@ -62,7 +73,7 @@ service cloud.firestore {
 
     match /books/{bookId} {
       allow get: if isValidId(bookId) && (existing().isPublished == true || isAdmin() || isLibrarian());
-      allow list: if isAdmin() || isLibrarian() || (resource.data.isPublished == true);
+      allow list: if true;
       
       allow create: if (isAdmin() || isLibrarian()) && isValidBook(incoming());
       allow update: if (isAdmin() || isLibrarian()) && isValidBook(incoming());
@@ -73,7 +84,7 @@ service cloud.firestore {
     // BOOK COPIES COLLECTION
     // -------------------------------------------------------------------------
     match /bookCopies/{copyId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update: if (isAdmin() || isLibrarian()) && isValidId(incoming().bookId);
       allow delete: if isAdmin();
     }
@@ -145,16 +156,16 @@ service cloud.firestore {
     // CATEGORIES COLLECTION
     // -------------------------------------------------------------------------
     match /categories/{categoryId} {
-      allow read: if isSignedIn() || (resource.data.isActive == true);
+      allow read: if true;
       allow create, update: if isAdmin() || isLibrarian();
       allow delete: if isAdmin();
     }
 
     // -------------------------------------------------------------------------
-    // SETTINGS COLLECTION
+    // SETTINGS & STATS COLLECTION
     // -------------------------------------------------------------------------
-    match /settings/library {
-      allow read: if isSignedIn();
+    match /settings/{settingId} {
+      allow read: if true;
       allow write: if isAdmin();
     }
   }

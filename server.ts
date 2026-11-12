@@ -1,6 +1,7 @@
 import express from 'express';
-import { initializeApp } from 'firebase-admin/app';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import cron from 'node-cron';
 import { processLoanNotifications } from './src/services/notificationJobService.ts';
 import { createServer as createViteServer } from 'vite';
@@ -9,55 +10,68 @@ async function startServer() {
     const app = express();
     app.use(express.json());
 
-    // Initialize Admin SDK
-    initializeApp();
-    const db = getFirestore('ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d');
-
-    // Schedule notification job every 15 minutes
-    cron.schedule('*/15 * * * *', async () => {
-        console.log('Running loan notification job...');
-        try {
-            await processLoanNotifications(db);
-            console.log('Notification job completed');
-        } catch (e) {
-            console.error('Notification job error:', e);
-        }
+    // Request logging middleware - MUST BE FIRST
+    app.use((req, res, next) => {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        next();
     });
 
-    app.post('/api/admin/notifications/process-loans', async (req, res) => {
-        if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
+    // Initialize Admin SDK with explicit project ID from configuration
+    const firebaseConfig = (await import('./firebase-applet-config.json', { with: { type: 'json' } })).default;
+    const databaseId = firebaseConfig.firestoreDatabaseId || 'ai-studio-tdtuchirchiqfili-e6506621-eaad-47ce-b29d-77c5dea4b76d';
+    if (!getApps().length) {
+        initializeApp({
+            projectId: firebaseConfig.projectId
+        });
+    }
+    const db = getFirestore(databaseId);
+    const auth = getAuth();
+
+    // API Routes
+    const apiRouter = express.Router();
+
+    apiRouter.get('/health', (req, res) => {
+        res.status(200).json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            databaseId: databaseId
+        });
+    });
+
+    apiRouter.get('/public-stats', async (req, res) => {
         try {
-            await processLoanNotifications(db);
-            res.status(200).json({ success: true, message: 'Notifications processed' });
+            const [usersSnap, booksSnap, copiesSnap] = await Promise.all([
+                db.collection('users').count().get(),
+                db.collection('books').count().get(),
+                db.collection('bookCopies').count().get()
+            ]);
+            res.status(200).json({
+                totalUsers: usersSnap.data().count || 0,
+                totalBooks: booksSnap.data().count || 0,
+                totalCopies: copiesSnap.data().count || 0
+            });
         } catch (e: any) {
-            res.status(500).json({ error: e.message });
+            console.error("Public stats error:", e);
+            res.status(500).json({ error: e.message || 'Failed to fetch public stats' });
         }
     });
 
-    app.post('/api/admin/users/create', async (req, res) => {
+    apiRouter.post('/admin/users/create', async (req, res) => {
+        console.log("Processing user creation request...");
         try {
-            // Check auth
             const authHeader = req.headers['authorization'];
-            if (authHeader !== process.env.ADMIN_SECRET && authHeader !== 'TDTU_ADMIN_SECRET') {
-                return res.status(401).json({ error: 'Unauthorized' });
+            if (authHeader !== 'TDTU_ADMIN_SECRET' && authHeader !== process.env.ADMIN_SECRET) {
+                console.warn("Unauthorized attempt to create user");
+                return res.status(401).json({ error: 'Ruxsat berilmagan' });
             }
 
             const { email, password, fullName, role, ...extra } = req.body;
             
             if (!email || !password || !fullName || !role) {
-                return res.status(400).json({ error: 'Barcha maydonlar to‘ldirilishi shart: email, password, fullName, role' });
+                return res.status(400).json({ error: 'Barcha maydonlar to‘ldirilishi shart' });
             }
 
-            if (password.length < 6) {
-                return res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo‘lishi kerak.' });
-            }
-
-            const { getAuth } = await import('firebase-admin/auth');
-            const auth = getAuth();
-            
-            console.log(`Admin creating user: ${email} (${role})`);
+            console.log(`Creating ${role}: ${email}`);
 
             let userRecord;
             try {
@@ -67,10 +81,7 @@ async function startServer() {
                     displayName: fullName
                 });
             } catch (authError: any) {
-                console.error("Auth creation failed:", authError);
                 if (authError.code === 'auth/email-already-exists') {
-                    // Try to find the existing user to sync Firestore if needed, 
-                    // but usually we should just return error
                     return res.status(409).json({ error: 'Ushbu email/ID bilan foydalanuvchi allaqachon mavjud.' });
                 }
                 throw authError;
@@ -89,36 +100,41 @@ async function startServer() {
             };
             
             await db.collection('users').doc(userRecord.uid).set(profile);
-            console.log(`User and profile created: ${userRecord.uid}`);
+            console.log(`User created successfully: ${userRecord.uid}`);
             res.status(200).json({ uid: userRecord.uid });
         } catch (e: any) {
-            console.error("User creation deep error:", e);
+            console.error("User creation error:", e);
             res.status(500).json({ 
-                error: e.message || 'Tizimda kutilmagan xatolik yuz berdi.',
-                code: e.code || 'unknown'
+                error: e.message || 'Serverda xatolik yuz berdi',
+                code: e.code
             });
         }
     });
 
-    app.post('/api/admin/users/reset-password', async (req, res) => {
-        if (req.headers['authorization'] !== process.env.ADMIN_SECRET && req.headers['authorization'] !== 'TDTU_ADMIN_SECRET') {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-        const { uid, password } = req.body;
-        const { getAuth } = await import('firebase-admin/auth');
-        const auth = getAuth();
-
+    apiRouter.post('/admin/users/reset-password', async (req, res) => {
         try {
+            const authHeader = req.headers['authorization'];
+            if (authHeader !== 'TDTU_ADMIN_SECRET' && authHeader !== process.env.ADMIN_SECRET) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+            const { uid, password } = req.body;
             await auth.updateUser(uid, { password });
             res.status(200).json({ success: true });
         } catch (e: any) {
-            console.error("Password reset error:", e);
             res.status(500).json({ error: e.message });
         }
     });
 
-    app.get('/api/health', (req, res) => {
-        res.status(200).json({ok: true, service: 'library-server'});
+    // Mount API router
+    app.use('/api', apiRouter);
+
+    // Schedule notification job
+    cron.schedule('*/15 * * * *', async () => {
+        try {
+            await processLoanNotifications(db);
+        } catch (e) {
+            console.error('Cron job error:', e);
+        }
     });
 
     // Vite middleware for SPA
@@ -129,7 +145,12 @@ async function startServer() {
     app.use(vite.middlewares);
 
     const port = 3000;
-    app.listen(port, () => console.log(`Server running on port ${port}`));
+    app.listen(port, () => {
+        console.log(`> Server running on http://localhost:${port}`);
+    });
 }
 
-startServer();
+startServer().catch(err => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+});

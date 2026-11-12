@@ -4,6 +4,7 @@ import {getBooksCount, getBooks, getBooksByCategoryCounts} from '../../services/
 import {getActiveLoansCount, getLoansWithDateFilter} from '../../services/loanService';
 import {getTotalFavoritesCount} from '../../services/favoriteService';
 import {getTotalReadsCount, getTotalReadingSessionsCount} from '../../services/readingService';
+import {getBookCopyStats} from '../../services/bookCopyService';
 import {Bar, Pie} from 'react-chartjs-2';
 import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement} from 'chart.js';
 import {exportToCSV} from '../../utils/csvExport';
@@ -29,7 +30,7 @@ export default function AdminAnalyticsPage() {
         const [
             users, roleCounts, booksCount, activeLoans, 
             totalFavorites, totalReads, totalSessions, 
-            categoryList, booksList
+            categoryList, booksList, copyStats
         ] = await Promise.all([
             getUsersCount(),
             getRoleCounts(),
@@ -39,7 +40,8 @@ export default function AdminAnalyticsPage() {
             getTotalReadsCount(),
             getTotalReadingSessionsCount(),
             import('../../services/categoryService').then(m => m.getCategories()),
-            getBooks(false)
+            getBooks(false),
+            getBookCopyStats()
         ]);
         
         const endDate = new Date();
@@ -52,7 +54,8 @@ export default function AdminAnalyticsPage() {
         setStats({
             users, roleCounts, booksCount, activeLoans, 
             totalFavorites, totalReads, totalSessions,
-            categoryList, booksList, loans
+            categoryList, booksList, loans,
+            totalCopies: copyStats.total
         });
     } catch (e) {
         console.error(e);
@@ -146,7 +149,7 @@ export default function AdminAnalyticsPage() {
             </div>
             <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Jami Kitoblar</p>
-                <p className="text-3xl font-black text-gray-900">{stats.booksCount}</p>
+                <p className="text-3xl font-black text-gray-900">{stats.totalCopies}</p>
             </div>
         </Card>
 

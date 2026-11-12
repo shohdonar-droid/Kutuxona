@@ -1,9 +1,97 @@
-import React from 'react';
-import {Link} from 'react-router-dom';
-import {Search, Book, Users, BookOpen, Library, GraduationCap, ChevronRight, Phone, Mail, MapPin, Instagram, Globe, Package} from 'lucide-react';
-import {Button, Card, StatCard, Badge} from '../components/UIComponents';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Book, Users, BookOpen, Library, GraduationCap, ChevronRight, Phone, Mail, MapPin, Instagram, Globe, Package, Tag } from 'lucide-react';
+import { Button, Card, StatCard, Badge } from '../components/UIComponents';
+import { getBooksCount, getBooks } from '../services/bookService';
+import { getBookCopyStats } from '../services/bookCopyService';
+import { getUsersCount } from '../services/userService';
+import { getCategories, seedDefaultCategoriesIfEmpty, Category } from '../services/categoryService';
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({
+    totalBooks: 0,
+    totalCopies: 0,
+    totalUsers: 0
+  });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        let booksCount = 0;
+        let copiesCount = 0;
+        let usersCount = 0;
+
+        try {
+          const res = await fetch('/api/public-stats');
+          if (res.ok) {
+            const data = await res.json();
+            booksCount = data.totalBooks || 0;
+            copiesCount = data.totalCopies || 0;
+            usersCount = data.totalUsers || 0;
+          }
+        } catch (apiErr) {
+          // public stats API not available
+        }
+
+        // If counts not yet set from API, load books and copies directly (permitted in rules)
+        if (!booksCount && !copiesCount) {
+          try {
+            const [bCount, cStats] = await Promise.all([
+              getBooksCount().catch(() => 0),
+              getBookCopyStats().catch(() => ({ total: 0 }))
+            ]);
+            booksCount = bCount;
+            copiesCount = cStats.total;
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        if (isMounted) {
+          setStats({
+            totalBooks: booksCount,
+            totalCopies: copiesCount,
+            totalUsers: usersCount
+          });
+        }
+
+        const cats = await getCategories(true).catch(() => []);
+        if (isMounted) {
+          setCategories(cats);
+        }
+      } catch (err) {
+        console.error('Error loading homepage data:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    loadData();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/books?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/books');
+    }
+  };
+
+  const formatCount = (count: number) => {
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return count.toString();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation */}
@@ -54,53 +142,83 @@ export default function HomePage() {
                 Elektron kutubxonamiz barcha talabalar uchun ochiq.
             </p>
             
-            <div className="max-w-3xl mx-auto flex bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-2 shadow-2xl shadow-black/20 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all">
+            <form onSubmit={handleSearch} className="max-w-3xl mx-auto flex bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-2 shadow-2xl shadow-black/20 focus-within:ring-4 focus-within:ring-blue-500/20 transition-all">
                 <div className="flex-1 flex items-center px-4">
                     <Search className="text-blue-300" size={24} />
                     <input 
                         type="text" 
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Kitob, muallif, fan yoki ISBN bo‘yicha qidiring..." 
                         className="w-full bg-transparent border-0 outline-none p-4 text-white placeholder:text-blue-200 font-bold"
                     />
                 </div>
-                <Button className="px-10 py-4 bg-white text-blue-900 hover:bg-blue-50 font-black tracking-wide border-0">
+                <Button type="submit" className="px-10 py-4 bg-white text-blue-900 hover:bg-blue-50 font-black tracking-wide border-0">
                     QIDIRISH
                 </Button>
-            </div>
+            </form>
             
-            <div className="mt-12 flex justify-center gap-10">
+            {/* Live Real-Time System KPI Numbers */}
+            <div className="mt-12 flex justify-center gap-10 md:gap-16">
                 {[
-                    { label: 'Jami kitoblar', value: '12k+', icon: Book },
-                    { label: 'Fizik fond', value: '6k+', icon: Package },
-                    { label: 'Foydalanuvchilar', value: '3k+', icon: Users }
+                    { label: 'Jami kitoblar', value: stats.totalBooks > 0 ? formatCount(stats.totalBooks) : '0', rawValue: stats.totalBooks, icon: Book },
+                    { label: 'Fizik fond', value: stats.totalCopies > 0 ? formatCount(stats.totalCopies) : '0', rawValue: stats.totalCopies, icon: Package },
+                    { label: 'Foydalanuvchilar', value: stats.totalUsers > 0 ? formatCount(stats.totalUsers) : '0', rawValue: stats.totalUsers, icon: Users }
                 ].map((stat, i) => (
                     <div key={i} className="flex flex-col items-center">
-                        <p className="text-2xl font-black text-white">{stat.value}</p>
-                        <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mt-1">{stat.label}</p>
+                        <p className="text-3xl md:text-4xl font-black text-white tracking-tight">
+                            {stat.value}
+                        </p>
+                        <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mt-1">
+                            {stat.label}
+                        </p>
                     </div>
                 ))}
             </div>
         </div>
       </section>
 
-      {/* Categories */}
-      <section className="relative z-20 -mt-16 max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-                {name: 'Darsliklar', icon: '📚', count: '4.2k'}, 
-                {name: 'O\'quv qo\'llanmalar', icon: '📝', count: '2.1k'}, 
-                {name: 'Ilmiy adabiyotlar', icon: '🔬', count: '1.5k'}, 
-                {name: 'Jadvallar', icon: '📊', count: '800'}, 
-                {name: 'Jurnallar', icon: '📰', count: '1.2k'}, 
-                {name: 'Badiiy', icon: '🎭', count: '2.3k'}
-            ].map(cat => (
-                <Card key={cat.name} className="flex flex-col items-center text-center p-6 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border-0 bg-white/80 backdrop-blur-md">
-                    <span className="text-4xl mb-4">{cat.icon}</span>
-                    <h4 className="text-sm font-bold text-gray-900 mb-1">{cat.name}</h4>
-                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tighter">{cat.count} ta kitob</p>
-                </Card>
-            ))}
-        </div>
+      {/* Dynamic System Categories */}
+      <section className="relative z-20 -mt-16 max-w-7xl mx-auto px-6 lg:px-8 w-full">
+        {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                    <Card key={i} className="flex flex-col items-center text-center p-6 border-0 bg-white/90 backdrop-blur-md shadow-lg animate-pulse">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full mb-4"></div>
+                        <div className="h-4 w-20 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 w-14 bg-gray-200 rounded"></div>
+                    </Card>
+                ))}
+            </div>
+        ) : categories.length === 0 ? (
+            <Card className="p-8 text-center bg-white/90 backdrop-blur-md shadow-lg">
+                <p className="text-sm font-bold text-gray-500">Tizimda kategoriyalar mavjud emas.</p>
+            </Card>
+        ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {categories.map(cat => (
+                    <div 
+                        key={cat.id} 
+                        onClick={() => navigate(`/books?categoryId=${cat.id}`)}
+                        className="cursor-pointer group"
+                    >
+                        <Card className="flex flex-col items-center text-center p-6 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 border-0 bg-white/95 backdrop-blur-md h-full justify-between">
+                            <span className="text-4xl mb-4 group-hover:scale-110 transition-transform">
+                                {cat.icon || '📚'}
+                            </span>
+                            <div className="w-full">
+                                <h4 className="text-sm font-extrabold text-gray-900 mb-1 line-clamp-1 group-hover:text-blue-700 transition-colors">
+                                    {cat.name}
+                                </h4>
+                                <p className="text-[11px] font-black text-blue-600 uppercase tracking-tight">
+                                    {cat.bookCount || 0} TA KITOB
+                                </p>
+                            </div>
+                        </Card>
+                    </div>
+                ))}
+            </div>
+        )}
       </section>
 
       {/* Main Content */}

@@ -43,12 +43,25 @@ export const createUserProfile = async (profile: UserProfile) => {
 };
 
 export const getUsersCount = async () => {
+  try {
+    const res = await fetch('/api/public-stats');
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof data.totalUsers === 'number') {
+        return data.totalUsers;
+      }
+    }
+  } catch (e) {
+    // Fallback to firestore query if signed in
+  }
+
   const path = 'users';
   try {
     const snapshot = await getCountFromServer(collection(db, 'users'));
     return snapshot.data().count;
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
+    // If unauthenticated or no permission, return 0 gracefully without alert spam
+    console.warn("Could not get users count directly from client:", error);
     return 0;
   }
 };
@@ -106,7 +119,7 @@ export const adminCreateUser = async (data: any) => {
             } else {
                 const text = await response.text();
                 console.error("Non-JSON error response:", text);
-                throw new Error(`Server xatosi: ${response.status}. API manzili noto'g'ri bo'lishi mumkin.`);
+                throw new Error(`Server xatosi: ${response.status}. Iltimos, sahifani yangilang va qayta urinib ko'ring.`);
             }
         }
         return await response.json();

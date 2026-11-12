@@ -40,6 +40,8 @@ export default function BookManagementPage() {
     }
   };
 
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.categoryIds.length === 0) {
@@ -48,36 +50,54 @@ export default function BookManagementPage() {
     }
 
     setSubmitting(true);
+    setUploadStatus("Fayllar tayyorlanmoqda...");
+
     try {
-        // 1. Upload files
         let pdfUrl = '';
         let pdfPath = '';
         let coverUrl = '';
 
-        if (pdfFile) {
-            const path = `books/pdfs/${Date.now()}_${pdfFile.name}`;
-            const storageRef = ref(storage, path);
-            await uploadBytes(storageRef, pdfFile);
-            pdfUrl = await getDownloadURL(storageRef);
-            pdfPath = path;
-        }
+        // 1. Upload files in parallel for maximum speed
+        const uploadTasks = [];
 
         if (coverFile) {
-            const path = `books/covers/${Date.now()}_${coverFile.name}`;
-            const storageRef = ref(storage, path);
-            await uploadBytes(storageRef, coverFile);
-            coverUrl = await getDownloadURL(storageRef);
+            setUploadStatus("Muqova rasmi yuklanmoqda...");
+            const cPath = `books/covers/${Date.now()}_${coverFile.name.replace(/\s+/g, '_')}`;
+            const cRef = ref(storage, cPath);
+            uploadTasks.push(
+                uploadBytes(cRef, coverFile).then(async () => {
+                    coverUrl = await getDownloadURL(cRef);
+                })
+            );
+        }
+
+        if (pdfFile) {
+            setUploadStatus("PDF fayli yuklanmoqda...");
+            const pPath = `books/pdfs/${Date.now()}_${pdfFile.name.replace(/\s+/g, '_')}`;
+            const pRef = ref(storage, pPath);
+            uploadTasks.push(
+                uploadBytes(pRef, pdfFile).then(async () => {
+                    pdfUrl = await getDownloadURL(pRef);
+                    pdfPath = pPath;
+                })
+            );
+        }
+
+        if (uploadTasks.length > 0) {
+            setUploadStatus("Fayllar bulutga yuklanmoqda...");
+            await Promise.all(uploadTasks);
         }
 
         // 2. Create Book doc
+        setUploadStatus("Kitob ma'lumotlari saqlanmoqda...");
         const newBook = {
-            title: formData.title,
-            author: formData.author,
-            isbn: formData.isbn,
-            subject: formData.subject,
+            title: formData.title.trim(),
+            author: formData.author.trim(),
+            isbn: formData.isbn.trim(),
+            subject: formData.subject.trim(),
             categoryIds: formData.categoryIds,
             language: formData.language,
-            annotation: formData.annotation,
+            annotation: formData.annotation.trim(),
             year: formData.year,
             pages: formData.pages,
             isPublished: true,
@@ -94,17 +114,19 @@ export default function BookManagementPage() {
 
         const docRef = await createBook(newBook);
         
-        // 3. Update category counts
-        const countPromises = formData.categoryIds.map(id => incrementCategoryBookCount(id, 1));
-        await Promise.all(countPromises);
+        // 3. Update category counts in background
+        formData.categoryIds.forEach(id => {
+            incrementCategoryBookCount(id, 1).catch(err => console.warn('Cat count increment error:', err));
+        });
 
-        // 4. Create initial copies
+        // 4. Create initial copies efficiently via batch
         if (formData.copiesCount > 0) {
-            const prefix = formData.title.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'B');
+            setUploadStatus("Kitob nusxalari generatsiya qilinmoqda...");
+            const prefix = formData.title.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'B') || 'BK';
             await createBookCopies(docRef.id, formData.copiesCount, prefix);
         }
 
-        alert('Kitob va nusxalar muvaffaqiyatli yaratildi!');
+        alert('Kitob va nusxalar muvaffaqiyatli saqlandi!');
         setShowForm(false);
         setFormData({
             title: '', author: '', isbn: '', subject: '', language: 'O‘zbek', 
@@ -113,12 +135,14 @@ export default function BookManagementPage() {
         });
         setPdfFile(null);
         setCoverFile(null);
+        setUploadStatus('');
         fetchBooks();
     } catch (err: any) {
         console.error("Creation error:", err);
-        alert("Xatolik: " + err.message);
+        alert("Xatolik yuz berdi: " + (err.message || err));
     } finally {
         setSubmitting(false);
+        setUploadStatus('');
     }
   };
 
@@ -254,7 +278,7 @@ export default function BookManagementPage() {
 
                 <div className="md:col-span-3 pt-6">
                     <Button type="submit" className="w-full justify-center py-4 text-lg shadow-xl shadow-blue-900/20" disabled={submitting}>
-                        {submitting ? 'Saqlanmoqda...' : 'Kitobni fondga qo‘shish'}
+                        {submitting ? (uploadStatus || 'Saqlanmoqda...') : 'Kitobni fondga qo‘shish'}
                     </Button>
                 </div>
             </form>

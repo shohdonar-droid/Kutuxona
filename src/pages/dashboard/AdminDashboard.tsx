@@ -8,30 +8,33 @@ import {
 import {getUsersCount, getStudentsCount} from '../../services/userService';
 import {getBooksCount} from '../../services/bookService';
 import {getActiveLoansCount} from '../../services/loanService';
+import {getBookCopyStats} from '../../services/bookCopyService';
 import {StatCard, Card, Badge, Button} from '../../components/UIComponents';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     users: 0, students: 0, tutors: 0, librarians: 0, 
     books: 0, copies: 0, activeLoans: 0, overdue: 0,
-    categories: 0
+    categories: 0, totalCopies: 0
   });
   const [loading, setLoading] = useState(true);
 
     useEffect(() => {
     const fetchData = async () => {
         try {
-            const [users, books, students, activeLoans, categories] = await Promise.all([
+            const [users, books, students, activeLoans, categories, copyStats] = await Promise.all([
                 getUsersCount(),
                 getBooksCount(),
                 getStudentsCount(),
                 getActiveLoansCount(),
-                import('../../services/categoryService').then(m => m.getCategories())
+                import('../../services/categoryService').then(m => m.getCategories()),
+                getBookCopyStats()
             ]);
             setStats(prev => ({ 
                 ...prev, 
                 users, students, books, activeLoans,
-                categories: categories.length 
+                categories: categories.length,
+                totalCopies: copyStats.total
             }));
         } catch (err) {
             console.error("Error fetching admin dashboard stats:", err);
@@ -70,7 +73,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard title="Foydalanuvchilar" value={stats.users} icon={Users} color="text-blue-600" />
         <StatCard title="Talabalar" value={stats.students} icon={GraduationCap} color="text-indigo-600" />
-        <StatCard title="Kitoblar" value={stats.books} icon={BookOpen} color="text-emerald-600" />
+        <StatCard title="Kitoblar" value={stats.totalCopies} icon={BookOpen} color="text-emerald-600" />
         <StatCard title="Kategoriyalar" value={stats.categories} icon={Tag} color="text-orange-500" />
         <StatCard title="Faol kreditlar" value={stats.activeLoans} icon={ArrowLeftRight} color="text-pink-500" />
       </div>
